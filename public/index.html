@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<meta name="theme-color" content="#080f1a" id="theme-meta"/>
+<title>Transit Live — Melbourne</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<style>
+/* ─── CSS Variables ──────────────────────────────────────────────────── */
+:root {
+  --bg:        #080f1a;
+  --bg2:       #0d1826;
+  --panel:     rgba(8,15,26,0.88);
+  --panel-s:   #0d1826;
+  --border:    rgba(0,212,255,0.10);
+  --border2:   rgba(0,212,255,0.22);
+  --text:      #c8dce8;
+  --text2:     #4a7890;
+  --text3:     #1e3a50;
+  --accent:    #00d4ff;
+  --success:   #00ff9d;
+  --danger:    #ff3c5c;
+  --warn:      #f5a800;
+  --shadow:    rgba(0,0,0,0.55);
+  --tr:        0.3s ease;
+}
+[data-theme="light"] {
+  --bg:        #f0f4f8;
+  --bg2:       #e2eaf2;
+  --panel:     rgba(255,255,255,0.92);
+  --panel-s:   #ffffff;
+  --border:    rgba(0,140,170,0.14);
+  --border2:   rgba(0,140,170,0.30);
+  --text:      #1a2a3a;
+  --text2:     #4a6878;
+  --text3:     #8aa0b0;
+  --accent:    #0099bb;
+  --success:   #00996a;
+  --danger:    #cc2040;
+  --warn:      #c47800;
+  --shadow:    rgba(0,40,70,0.14);
+}
+
+/* ─── Reset ──────────────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);
+  font-family:'DM Sans',system-ui,sans-serif;
+  transition:background var(--tr),color var(--tr)}
+
+/* ─── Map ────────────────────────────────────────────────────────────── */
+#map{position:absolute;inset:0;z-index:0}
+
+/* ─── Leaflet overrides ──────────────────────────────────────────────── */
+.leaflet-control-zoom{border:none!important;box-shadow:0 4px 20px var(--shadow)!important}
+.leaflet-control-zoom a{
+  background:var(--panel-s)!important;color:var(--accent)!important;
+  border:1px solid var(--border2)!important;
+  width:36px!important;height:36px!important;line-height:36px!important;font-size:17px!important;
+  transition:all 0.2s!important;backdrop-filter:blur(8px);}
+.leaflet-control-zoom a:hover{background:var(--accent)!important;color:var(--bg)!important}
+.leaflet-control-attribution{background:var(--panel)!important;color:var(--text3)!important;
+  font-size:9px!important;backdrop-filter:blur(8px);transition:background var(--tr)}
+.leaflet-control-attribution a{color:var(--accent)!important}
+
+/* ─── Cluster markers ────────────────────────────────────────────────── */
+.cluster-bus,.cluster-train,.cluster-tram,.cluster-vline{
+  display:flex;align-items:center;justify-content:center;
+  border-radius:50%;font-size:.72rem;font-weight:700;color:#fff;
+  box-shadow:0 2px 10px rgba(0,0,0,0.4);
+}
+.cluster-bus  {background:#7b5ea7;border:2px solid #9b7ec7;}
+.cluster-train{background:#094c8d;border:2px solid #2a6cad;}
+.cluster-tram {background:#c47800;border:2px solid #f5a800;}
+.cluster-vline{background:#6c3483;border:2px solid #8c54a3;}
+/* Override leaflet.markercluster defaults */
+.marker-cluster{background:transparent!important}
+.marker-cluster div{background:transparent!important;color:#fff!important;line-height:1!important}
+
+/* ─── Loader ─────────────────────────────────────────────────────────── */
+#loader{
+  position:absolute;inset:0;z-index:5000;
+  background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  transition:opacity 0.6s ease;
+}
+#loader.out{opacity:0;pointer-events:none}
+.ld-logo{font-family:'Space Grotesk',sans-serif;font-size:1.7rem;font-weight:700;
+  color:var(--text);letter-spacing:-.03em}
+.ld-logo span{color:var(--accent)}
+.ld-dots{display:flex;gap:8px;margin:4px 0}
+.ld-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:lda 1.2s ease-in-out infinite}
+.ld-dot:nth-child(2){animation-delay:.18s}.ld-dot:nth-child(3){animation-delay:.36s}
+@keyframes lda{0%,80%,100%{transform:scale(0.5);opacity:.25}40%{transform:scale(1);opacity:1}}
+.ld-sub{font-size:.68rem;color:var(--text3);letter-spacing:.12em;text-transform:uppercase}
+
+/* ─── Header ─────────────────────────────────────────────────────────── */
+#hdr{
+  position:absolute;top:0;left:0;right:0;z-index:1000;
+  height:54px;
+  background:var(--panel);border-bottom:1px solid var(--border);
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  display:flex;align-items:center;padding:0 14px;gap:8px;
+  transition:background var(--tr),border-color var(--tr);
+  padding-top:env(safe-area-inset-top);
+}
+.hdr-logo{
+  font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1rem;
+  color:var(--text);display:flex;align-items:center;gap:8px;white-space:nowrap;letter-spacing:-.02em;
+  cursor:default;
+}
+.hdr-logo .a{color:var(--accent)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--success);flex-shrink:0;animation:pdot 1.8s infinite}
+@keyframes pdot{0%{box-shadow:0 0 0 0 rgba(0,255,157,.6)}70%{box-shadow:0 0 0 6px rgba(0,255,157,0)}100%{box-shadow:0 0 0 0 rgba(0,255,157,0)}}
+.hdr-div{width:1px;height:22px;background:var(--border);flex-shrink:0}
+.hdr-counts{display:flex;gap:4px}
+.cnt-chip{
+  display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:7px;
+  background:rgba(0,212,255,.05);border:1px solid var(--border);
+  font-size:.68rem;font-weight:600;color:var(--text2);transition:all 0.2s;cursor:default;
+}
+.cnt-chip .ico{font-size:.82rem;line-height:1}
+.cnt-chip b{color:var(--accent);font-size:.75rem;min-width:16px;text-align:right}
+.hdr-spacer{flex:1}
+.hdr-updated{font-size:.62rem;color:var(--text3);white-space:nowrap;display:flex;align-items:center;gap:4px}
+.hdr-updated em{color:var(--text2);font-style:normal}
+.hdr-btn{
+  width:33px;height:33px;border-radius:8px;
+  background:rgba(0,212,255,.05);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all 0.2s;color:var(--text2);font-size:.9rem;flex-shrink:0;
+  user-select:none;position:relative;
+}
+.hdr-btn:hover{background:rgba(0,212,255,.14);border-color:var(--border2);color:var(--accent)}
+.hdr-btn.active{background:rgba(0,212,255,.14);border-color:var(--border2);color:var(--accent)}
+.hdr-btn svg{width:15px;height:15px;transition:transform 0.35s ease}
+.hdr-btn.spinning svg{animation:spin 0.6s ease}
+@keyframes spin{to{transform:rotate(360deg)}}
+.mode-badge{
+  display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:7px;
+  font-size:.62rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  white-space:nowrap;
+}
+.mode-badge.live{background:rgba(0,255,157,.1);border:1px solid rgba(0,255,157,.3);color:var(--success)}
+.mode-badge.demo{background:rgba(245,168,0,.1);border:1px solid rgba(245,168,0,.3);color:var(--warn)}
+.mode-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pdot 1.8s infinite}
+
+/* Follow indicator */
+#follow-bar{
+  position:absolute;top:54px;left:0;right:0;z-index:999;
+  height:32px;
+  background:rgba(0,255,157,0.12);border-bottom:1px solid rgba(0,255,157,0.3);
+  display:flex;align-items:center;padding:0 14px;gap:10px;
+  font-size:.68rem;color:var(--success);
+  transition:opacity 0.3s,transform 0.3s;
+}
+#follow-bar.hidden{opacity:0;transform:translateY(-32px);pointer-events:none}
+#follow-bar em{font-style:normal;font-weight:600;color:#fff}
+#follow-bar button{
+  margin-left:auto;padding:2px 8px;border-radius:5px;border:1px solid rgba(0,255,157,0.4);
+  background:transparent;color:var(--success);cursor:pointer;font-size:.62rem;
+}
+#follow-bar button:hover{background:rgba(0,255,157,0.15)}
+
+/* Alert badge on bell button */
+.alert-badge{
+  position:absolute;top:-3px;right:-3px;
+  min-width:16px;height:16px;border-radius:8px;
+  background:var(--danger);color:#fff;
+  font-size:.52rem;font-weight:700;line-height:16px;text-align:center;padding:0 3px;
+  display:none;
+}
+.alert-badge.show{display:block}
+
+/* ─── Search ─────────────────────────────────────────────────────────── */
+.hdr-search-wrap{position:relative;flex:1;max-width:220px}
+#search-input{
+  width:100%;padding:5px 10px 5px 28px;
+  background:rgba(0,212,255,.06);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-family:'DM Sans',sans-serif;font-size:.72rem;
+  outline:none;transition:border-color 0.2s,background 0.2s;
+}
+#search-input::placeholder{color:var(--text3)}
+#search-input:focus{border-color:var(--accent);background:rgba(0,212,255,.10)}
+.hdr-search-icon{
+  position:absolute;left:8px;top:50%;transform:translateY(-50%);
+  color:var(--text3);pointer-events:none;font-size:.75rem;
+}
+#search-results{
+  position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:2000;
+  background:var(--panel-s);border:1px solid var(--border2);border-radius:10px;
+  box-shadow:0 8px 30px var(--shadow);
+  max-height:260px;overflow-y:auto;
+  display:none;
+}
+#search-results.show{display:block}
+.sr-item{
+  padding:7px 12px;cursor:pointer;border-bottom:1px solid var(--border);
+  transition:background 0.15s;display:flex;align-items:center;gap:9px;
+}
+.sr-item:last-child{border-bottom:none}
+.sr-item:hover{background:rgba(0,212,255,.07)}
+.sr-ico{font-size:.88rem;line-height:1;width:20px;text-align:center}
+.sr-info{flex:1;min-width:0}
+.sr-name{font-size:.72rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr-sub{font-size:.6rem;color:var(--text2)}
+.sr-empty{padding:10px 12px;font-size:.68rem;color:var(--text3);text-align:center}
+
+/* ─── Filter Panel ───────────────────────────────────────────────────── */
+#filter-panel{
+  position:absolute;z-index:900;
+  width:272px;
+  background:var(--panel);border:1px solid var(--border);border-radius:14px;
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  box-shadow:0 8px 40px var(--shadow);
+  display:flex;flex-direction:column;
+  transition:opacity 0.3s ease, transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  transform-origin:top left;
+  overflow:hidden;
+}
+#filter-panel.hidden{opacity:0;transform:scale(0.94) translateY(-6px);pointer-events:none}
+.fp-head{
+  padding:12px 14px 10px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.fp-title{font-family:'Space Grotesk',sans-serif;font-size:.75rem;font-weight:600;
+  color:var(--text);letter-spacing:.05em;text-transform:uppercase}
+.fp-btns{display:flex;gap:5px}
+.fp-act{
+  font-size:.6rem;padding:3px 8px;border-radius:5px;cursor:pointer;
+  border:1px solid var(--border);background:transparent;
+  color:var(--text2);transition:all 0.15s;font-family:'DM Sans',sans-serif;font-weight:500;
+}
+.fp-act:hover{border-color:var(--accent);color:var(--accent)}
+.fp-search{padding:9px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.fp-search input{
+  width:100%;padding:6px 10px;
+  background:rgba(0,212,255,.04);border:1px solid var(--border);border-radius:7px;
+  color:var(--text);font-family:'DM Sans',sans-serif;font-size:.73rem;
+  outline:none;transition:border-color 0.2s;
+}
+.fp-search input::placeholder{color:var(--text3)}
+.fp-search input:focus{border-color:var(--accent)}
+.fp-body{overflow-y:auto;flex:1;padding:6px 0 8px;max-height:calc(100vh - 180px)}
+.fp-body::-webkit-scrollbar{width:3px}
+.fp-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.fp-label{font-size:.57rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text3);padding:8px 14px 3px}
+.mode-row{
+  display:flex;align-items:center;gap:9px;padding:6px 14px;
+  cursor:pointer;transition:background 0.15s;
+}
+.mode-row:hover{background:rgba(0,212,255,.04)}
+.mode-ico{font-size:.95rem;width:22px;text-align:center;line-height:1}
+.mode-name{flex:1;font-size:.76rem;font-weight:500;color:var(--text)}
+.mode-cnt{font-size:.62rem;color:var(--text2);background:rgba(0,212,255,.07);
+  padding:2px 7px;border-radius:9px;min-width:22px;text-align:center}
+.tog{width:32px;height:17px;border-radius:9px;background:var(--border2);
+  position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0}
+.tog.on{background:var(--accent)}
+.tog::after{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;
+  border-radius:50%;background:#fff;transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.tog.on::after{transform:translateX(15px)}
+.line-row{
+  display:flex;align-items:center;gap:8px;padding:4px 14px;
+  cursor:pointer;transition:background 0.15s,opacity 0.2s;
+}
+.line-row:hover{background:rgba(0,212,255,.04)}
+.line-row.off{opacity:0.3}
+.l-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.l-name{flex:1;font-size:.72rem;color:var(--text)}
+.l-chk{
+  width:15px;height:15px;border-radius:4px;border:1.5px solid var(--border2);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s;font-size:9px;color:transparent;
+}
+.l-chk.on{background:var(--accent);border-color:var(--accent);color:#000}
+
+/* ─── Detail Panel ───────────────────────────────────────────────────── */
+#detail-panel{
+  position:absolute;top:66px;right:14px;z-index:900;
+  width:290px;
+  background:var(--panel);border:1px solid var(--border);border-radius:14px;
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  box-shadow:0 8px 40px var(--shadow);
+  display:flex;flex-direction:column;
+  max-height:calc(100vh - 112px);
+  overflow:hidden;
+  transition:opacity 0.3s ease, transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  transform-origin:top right;
+}
+#detail-panel.hidden{opacity:0;transform:scale(0.94) translateX(10px);pointer-events:none}
+.dp-color-bar{height:3px;flex-shrink:0;transition:background 0.3s}
+.dp-top{
+  padding:13px 14px 11px;border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;gap:11px;flex-shrink:0;
+  position:sticky;top:0;background:var(--panel);backdrop-filter:blur(20px);z-index:1;
+}
+.dp-ico{
+  width:42px;height:42px;border-radius:12px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:1.35rem;
+  transition:background 0.3s,box-shadow 0.3s;
+}
+.dp-info{flex:1;min-width:0}
+.dp-name{font-family:'Space Grotesk',sans-serif;font-size:.95rem;font-weight:600;
+  color:var(--text);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dp-sub{font-size:.6rem;text-transform:uppercase;letter-spacing:.09em;color:var(--text2);
+  margin-top:4px;display:flex;align-items:center;gap:5px}
+.dp-sub-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;transition:background 0.3s}
+.dp-src-badge{font-size:.52rem;padding:2px 6px;border-radius:4px;font-weight:600}
+.dp-src-live{background:rgba(0,255,157,.15);color:var(--success)}
+.dp-src-demo{background:rgba(245,168,0,.15);color:var(--warn)}
+.dp-close{
+  width:27px;height:27px;border-radius:7px;flex-shrink:0;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--text2);font-size:.8rem;
+  transition:all 0.15s;
+}
+.dp-close:hover{background:rgba(255,60,92,.15);border-color:var(--danger);color:var(--danger)}
+.dp-body{padding:12px 14px;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+.dp-body::-webkit-scrollbar{width:3px}
+.dp-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.dp-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.dp-k{font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)}
+.dp-v{font-size:.76rem;color:var(--text2);text-align:right}
+.dp-hr{height:1px;background:var(--border);margin:1px 0}
+.dp-badge{font-size:.67rem;padding:3px 10px;border-radius:5px;font-weight:600}
+.dp-badge.ok{background:rgba(0,255,157,.12);color:var(--success)}
+.dp-badge.dl{background:rgba(255,60,92,.12);color:var(--danger)}
+.dp-line-swatch{display:inline-flex;align-items:center;gap:6px}
+.dp-swatch{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+/* Follow button in detail panel */
+.dp-follow-btn{
+  width:100%;padding:7px;border-radius:8px;margin-top:4px;cursor:pointer;
+  border:1px solid var(--border2);background:rgba(0,212,255,.06);
+  color:var(--accent);font-family:'DM Sans',sans-serif;font-size:.7rem;font-weight:600;
+  transition:all 0.15s;
+}
+.dp-follow-btn:hover{background:rgba(0,212,255,.16);border-color:var(--accent)}
+.dp-follow-btn.following{background:rgba(0,255,157,.1);border-color:rgba(0,255,157,.4);color:var(--success)}
+/* Occupancy bar */
+.occ-bar-wrap{display:flex;flex-direction:column;gap:4px;width:100%}
+.occ-label{font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text3)}
+.occ-bar-bg{height:6px;border-radius:3px;background:var(--border2);overflow:hidden;width:100%}
+.occ-bar-fill{height:100%;border-radius:3px;transition:width 0.5s,background 0.3s}
+.occ-text{font-size:.62rem;color:var(--text2)}
+
+/* ─── Alerts Panel ───────────────────────────────────────────────────── */
+#alerts-panel{
+  position:absolute;top:66px;right:14px;z-index:901;
+  width:310px;
+  background:var(--panel);border:1px solid var(--border);border-radius:14px;
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  box-shadow:0 8px 40px var(--shadow);
+  display:flex;flex-direction:column;
+  max-height:calc(100vh - 112px);
+  overflow:hidden;
+  transition:opacity 0.3s ease, transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  transform-origin:top right;
+}
+#alerts-panel.hidden{opacity:0;transform:scale(0.94) translateX(10px);pointer-events:none}
+.ap-head{
+  padding:12px 14px 10px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.ap-title{font-family:'Space Grotesk',sans-serif;font-size:.75rem;font-weight:600;
+  color:var(--text);letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:7px}
+.ap-title-ico{font-size:.9rem}
+.ap-close{
+  width:24px;height:24px;border-radius:6px;
+  background:transparent;border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--text2);font-size:.72rem;transition:all 0.15s;
+}
+.ap-close:hover{background:rgba(255,60,92,.15);border-color:var(--danger);color:var(--danger)}
+.ap-body{overflow-y:auto;flex:1}
+.ap-body::-webkit-scrollbar{width:3px}
+.ap-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.ap-empty{padding:20px 14px;text-align:center;font-size:.72rem;color:var(--text3)}
+.alert-item{
+  padding:11px 14px;border-bottom:1px solid var(--border);
+  transition:background 0.15s;
+}
+.alert-item:last-child{border-bottom:none}
+.alert-item:hover{background:rgba(255,195,0,.04)}
+.alert-title{font-size:.74rem;font-weight:600;color:var(--text);line-height:1.3;margin-bottom:4px}
+.alert-desc{font-size:.64rem;color:var(--text2);line-height:1.4}
+.alert-routes{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.alert-route-tag{
+  font-size:.55rem;padding:2px 7px;border-radius:4px;font-weight:600;
+  background:rgba(255,195,0,.12);border:1px solid rgba(255,195,0,.25);color:var(--warn);
+}
+.alert-effect{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:.58rem;padding:2px 7px;border-radius:4px;
+  background:rgba(255,60,92,.1);border:1px solid rgba(255,60,92,.2);color:var(--danger);
+  margin-bottom:4px;
+}
+
+/* ─── Status Bar ─────────────────────────────────────────────────────── */
+#sbar{
+  position:absolute;bottom:0;left:0;right:0;z-index:1000;
+  height:34px;
+  background:var(--panel);border-top:1px solid var(--border);
+  backdrop-filter:blur(12px);
+  display:flex;align-items:center;padding:0 14px;gap:14px;
+  transition:background var(--tr),border-color var(--tr);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.sb{font-size:.6rem;color:var(--text3);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.sb span{color:var(--text2)}
+.sb-div{width:1px;height:12px;background:var(--border)}
+.sb-sp{flex:1}
+.sb-cd{font-size:.6rem;color:var(--text3);white-space:nowrap}
+.sb-cd em{color:var(--accent);font-style:normal;font-weight:600}
+
+/* ─── Vehicle Markers ────────────────────────────────────────────────── */
+.vm-inner{
+  display:flex;align-items:center;justify-content:center;
+  border-radius:50%;position:relative;
+  transition:transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+  cursor:pointer;
+}
+.vm-ring{
+  position:absolute;inset:-6px;border-radius:50%;
+  border:1.5px solid;animation:vmring 2.8s ease-out infinite;
+  pointer-events:none;
+}
+@keyframes vmring{0%{transform:scale(1);opacity:.5}100%{transform:scale(2.2);opacity:0}}
+.leaflet-marker-icon:hover .vm-inner{transform:scale(1.5)!important}
+.leaflet-marker-icon.sel .vm-inner{transform:scale(1.8)!important}
+.leaflet-marker-icon.sel .vm-ring{animation-duration:0.9s}
+/* Bearing arrow inside marker */
+.vm-arrow{
+  position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+  width:0;height:0;
+  border-left:4px solid transparent;
+  border-right:4px solid transparent;
+  border-bottom:7px solid;
+  opacity:0.85;pointer-events:none;
+  transition:transform 0.3s ease;
+}
+
+/* Station markers */
+.station-dot{
+  width:9px;height:9px;border-radius:50%;
+  border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.5);
+  cursor:pointer;transition:transform 0.15s;
+}
+.station-dot:hover{transform:scale(1.5)}
+.station-tt{
+  background:var(--panel-s)!important;border:1px solid var(--border2)!important;
+  border-radius:7px!important;padding:4px 8px!important;
+  font-size:.62rem!important;color:var(--text)!important;
+  font-family:'DM Sans',sans-serif!important;
+  box-shadow:0 3px 10px var(--shadow)!important;
+  white-space:nowrap!important;
+}
+
+/* Leaflet tooltip override */
+.vm-tt{
+  background:var(--panel-s)!important;border:1px solid var(--border2)!important;
+  border-radius:7px!important;padding:5px 9px!important;
+  font-size:.63rem!important;color:var(--text)!important;
+  font-family:'DM Sans',sans-serif!important;
+  box-shadow:0 4px 14px var(--shadow)!important;
+  white-space:nowrap!important;
+}
+.vm-tt::before{border-top-color:var(--border2)!important}
+
+/* ─── Responsive ─────────────────────────────────────────────────────── */
+@media(max-width:600px){
+  #filter-panel{width:calc(100vw - 28px)}
+  #detail-panel,#alerts-panel{
+    width:calc(100vw - 28px);
+    top:auto;bottom:42px;right:0;left:0;margin:0 14px;
+    border-radius:14px 14px 0 0;max-height:55vh;
+  }
+  #detail-panel.hidden{transform:scale(1) translateY(16px)}
+  #alerts-panel.hidden{transform:scale(1) translateY(16px)}
+  .hdr-updated{display:none}
+  .cnt-chip .ico{display:none}
+  .hdr-search-wrap{max-width:120px}
+}
+@media(max-width:380px){.mode-badge{display:none}}
+</style>
+</head>
+<body>
+
+<!-- Loader -->
+<div id="loader">
+  <div class="ld-logo">Transit<span>-Live</span></div>
+  <div class="ld-dots">
+    <div class="ld-dot"></div><div class="ld-dot"></div><div class="ld-dot"></div>
+  </div>
+  <div class="ld-sub">Melbourne Real-Time Transit</div>
+</div>
+
+<!-- Map -->
+<div id="map"></div>
+
+<!-- Header -->
+<header id="hdr">
+  <!-- Filter toggle -->
+  <button class="hdr-btn" id="filter-toggle" title="Filters" onclick="toggleFilter()">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <line x1="2" y1="4" x2="14" y2="4"/><line x1="4" y1="8" x2="12" y2="8"/><line x1="6" y1="12" x2="10" y2="12"/>
+    </svg>
+  </button>
+
+  <div class="hdr-logo"><div class="live-dot"></div>Transit<span class="a">-Live</span></div>
+  <div class="hdr-div"></div>
+
+  <!-- Search bar -->
+  <div class="hdr-search-wrap">
+    <span class="hdr-search-icon">🔍</span>
+    <input type="text" id="search-input" placeholder="Search routes…"
+      oninput="onSearchInput(this.value)"
+      onfocus="showSearchDrop()"
+      onblur="setTimeout(hideSearchDrop,200)"
+      autocomplete="off"/>
+    <div id="search-results"></div>
+  </div>
+
+  <div class="hdr-spacer"></div>
+
+  <div class="hdr-counts">
+    <div class="cnt-chip" title="Trains"><span class="ico">🚆</span><b id="ct">—</b></div>
+    <div class="cnt-chip" title="Trams"><span class="ico">🚋</span><b id="cm">—</b></div>
+    <div class="cnt-chip" title="Buses"><span class="ico">🚌</span><b id="cb">—</b></div>
+    <div class="cnt-chip" title="V/Line" id="cv-chip" style="display:none"><span class="ico">🚂</span><b id="cv">0</b></div>
+  </div>
+
+  <div class="hdr-updated">Updated <em id="hdr-age">—</em> ago</div>
+
+  <!-- Alerts bell -->
+  <button class="hdr-btn" id="alerts-btn" title="Service Alerts" onclick="toggleAlerts()">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 2a5 5 0 0 0-5 5v3l-1 1.5h12L13 10V7a5 5 0 0 0-5-5z"/>
+      <path d="M6.5 13.5a1.5 1.5 0 0 0 3 0"/>
+    </svg>
+    <span class="alert-badge" id="alert-badge">0</span>
+  </button>
+
+  <!-- Refresh -->
+  <button class="hdr-btn" id="refresh-btn" title="Refresh" onclick="manualRefresh()">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M13.5 2.5A6.5 6.5 0 1 1 8 1.5"/>
+      <polyline points="8,1.5 11,4 8,6.5"/>
+    </svg>
+  </button>
+
+  <!-- Theme toggle -->
+  <button class="hdr-btn" id="theme-btn" title="Toggle theme" onclick="toggleTheme()">
+    <svg id="theme-icon" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M13.5 10.5a6 6 0 1 1-8-8 4.5 4.5 0 0 0 8 8z"/>
+    </svg>
+  </button>
+
+  <div class="mode-badge demo" id="mode-badge">
+    <div class="mode-dot"></div><span id="mode-text">DEMO</span>
+  </div>
+</header>
+
+<!-- Follow indicator bar (appears below header) -->
+<div id="follow-bar" class="hidden">
+  📍 Following <em id="follow-label">—</em>
+  <button onclick="stopFollow()">Stop ✕</button>
+</div>
+
+<!-- Filter Panel -->
+<div id="filter-panel" class="hidden">
+  <div class="fp-head">
+    <div class="fp-title">Filters</div>
+    <div class="fp-btns">
+      <button class="fp-act" onclick="filterShowAll()">Show all</button>
+      <button class="fp-act" onclick="filterClearAll()">Clear all</button>
+    </div>
+  </div>
+  <div class="fp-search">
+    <input type="text" id="fp-search" placeholder="Search routes…" oninput="onFilterSearch(this.value)"/>
+  </div>
+  <div class="fp-body" id="fp-body"></div>
+</div>
+
+<!-- Alerts Panel -->
+<div id="alerts-panel" class="hidden">
+  <div class="ap-head">
+    <div class="ap-title"><span class="ap-title-ico">🔔</span> Service Alerts</div>
+    <button class="ap-close" onclick="toggleAlerts()">✕</button>
+  </div>
+  <div class="ap-body" id="alerts-list">
+    <div class="ap-empty">Loading alerts…</div>
+  </div>
+</div>
+
+<!-- Detail Panel -->
+<div id="detail-panel" class="hidden">
+  <div class="dp-color-bar" id="dp-bar"></div>
+  <div class="dp-top">
+    <div class="dp-ico" id="dp-ico"></div>
+    <div class="dp-info">
+      <div class="dp-name" id="dp-name">—</div>
+      <div class="dp-sub">
+        <div class="dp-sub-dot" id="dp-dot"></div>
+        <span id="dp-line">—</span>
+        <span class="dp-src-badge" id="dp-src"></span>
+      </div>
+    </div>
+    <button class="dp-close" onclick="closeDetail()" title="Close">✕</button>
+  </div>
+  <div class="dp-body" id="dp-body"></div>
+</div>
+
+<!-- Status Bar -->
+<div id="sbar">
+  <div class="sb">Total <span id="sb-total">—</span> vehicles</div>
+  <div class="sb-div"></div>
+  <div class="sb">Source <span>Transport Victoria</span></div>
+  <div class="sb-sp"></div>
+  <div class="sb-cd">Refresh in <em id="sb-cd">—</em>s</div>
+</div>
+
+<script>
+// ─── Constants ──────────────────────────────────────────────────────────────
+const API_URL    = '/api/vehicles';
+const REFRESH_MS = 15000;
+const TILE_DARK  = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+const ATTRIB     = '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>';
+const ICO        = {train:'🚆',tram:'🚋',bus:'🚌',vline:'🚂'};
+
+const ALERT_EFFECTS = {
+  1:'No Service', 2:'Reduced Service', 3:'Significant Delays',
+  4:'Detour', 5:'Additional Service', 6:'Modified Service',
+  7:'Other Effect', 8:'Unknown Effect',
+};
+
+// ─── Route data (accurate Melbourne GPS coords) ──────────────────────────────
+const ROUTES=[
+  ['train','Belgrave',    '#094c8d','Belgrave Line',    [[-37.8183,144.9671],[-37.8274,145.0118],[-37.8241,145.0585],[-37.8116,145.2276],[-37.8603,145.3556]]],
+  ['train','Glen Waverley','#094c8d','Glen Waverley Line',[[-37.8183,144.9671],[-37.8274,145.0118],[-37.8432,145.0693],[-37.8701,145.1146],[-37.8786,145.1644]]],
+  ['train','Lilydale',    '#094c8d','Lilydale Line',    [[-37.8183,144.9671],[-37.8274,145.0118],[-37.8241,145.0585],[-37.8116,145.2276],[-37.7578,145.3568]]],
+  ['train','Alamein',     '#094c8d','Alamein Line',     [[-37.8183,144.9671],[-37.8274,145.0118],[-37.8241,145.0585],[-37.8381,145.0769],[-37.8518,145.0981]]],
+  ['train','Frankston',   '#159943','Frankston Line',   [[-37.8183,144.9671],[-37.8388,144.9927],[-37.8769,145.0238],[-37.9210,145.0740],[-37.9710,145.0942],[-38.1391,145.1232]]],
+  ['train','Cranbourne',  '#8b1a4a','Cranbourne Line',  [[-37.8183,144.9671],[-37.8388,144.9927],[-37.8769,145.0238],[-37.9841,145.1282],[-38.0652,145.2847],[-38.1133,145.3485]]],
+  ['train','Pakenham',    '#8b1a4a','Pakenham Line',    [[-37.8183,144.9671],[-37.8388,144.9927],[-37.8769,145.0238],[-37.9841,145.1282],[-38.0480,145.3956],[-38.0724,145.4897]]],
+  ['train','Sandringham', '#f178af','Sandringham Line', [[-37.8183,144.9671],[-37.8388,144.9927],[-37.8769,145.0238],[-37.9090,144.9980],[-37.9504,145.0091]]],
+  ['train','Werribee',    '#159943','Werribee Line',    [[-37.8183,144.9671],[-37.8047,144.9426],[-37.8440,144.8788],[-37.8671,144.7769],[-37.9014,144.6604]]],
+  ['train','Williamstown','#159943','Williamstown Line',[[-37.8183,144.9671],[-37.8047,144.9426],[-37.8440,144.8788],[-37.8640,144.8950]]],
+  ['train','Sunbury',     '#fc7f1e','Sunbury Line',     [[-37.8183,144.9671],[-37.8183,144.9526],[-37.7994,144.9293],[-37.7871,144.8310],[-37.5774,144.7275]]],
+  ['train','Craigieburn', '#fc7f1e','Craigieburn Line', [[-37.8183,144.9671],[-37.8047,144.9426],[-37.7994,144.9293],[-37.6815,144.9176],[-37.6025,144.9463]]],
+  ['train','Upfield',     '#fc7f1e','Upfield Line',     [[-37.8183,144.9671],[-37.8047,144.9426],[-37.7994,144.9293],[-37.7407,144.9641],[-37.6422,144.9536]]],
+  ['train','Mernda',      '#e1261c','Mernda Line',      [[-37.8183,144.9671],[-37.7921,144.9987],[-37.7596,145.0285],[-37.7096,145.0535],[-37.6012,145.0886]]],
+  ['train','Hurstbridge', '#e1261c','Hurstbridge Line', [[-37.8183,144.9671],[-37.7921,144.9987],[-37.7596,145.0285],[-37.7096,145.0535],[-37.6795,145.1545],[-37.6283,145.1805]]],
+  ['tram','Route 96',  '#f5a800','Route 96',  [[-37.8649,144.9785],[-37.8388,144.9800],[-37.8183,144.9671],[-37.8094,144.9671],[-37.7751,144.9789]]],
+  ['tram','Route 19',  '#00b5e2','Route 19',  [[-37.7320,144.9601],[-37.7720,144.9630],[-37.8094,144.9671],[-37.8183,144.9671]]],
+  ['tram','Route 86',  '#f5a800','Route 86',  [[-37.7087,145.0148],[-37.7610,144.9850],[-37.8070,144.9810],[-37.8183,144.9671]]],
+  ['tram','Route 57',  '#00b5e2','Route 57',  [[-37.7628,144.8845],[-37.8000,144.9220],[-37.8140,144.9526],[-37.8183,144.9671]]],
+  ['tram','Route 48',  '#00b5e2','Route 48',  [[-37.8085,145.0570],[-37.8094,145.0290],[-37.8094,144.9730],[-37.8094,144.9430]]],
+  ['tram','Route 70',  '#e1261c','Route 70',  [[-37.8214,144.9443],[-37.8183,144.9671],[-37.8230,144.9921],[-37.8390,145.0760]]],
+  ['tram','Route 109', '#e1261c','Route 109', [[-37.8183,144.9526],[-37.8183,144.9671],[-37.8280,145.0280],[-37.8280,145.1000]]],
+  ['tram','Route 112', '#f5a800','Route 112', [[-37.7455,144.9777],[-37.7950,144.9700],[-37.8094,144.9671],[-37.8390,144.9671]]],
+  ['tram','Route 1',   '#78be20','Route 1',   [[-37.8700,144.9580],[-37.8300,144.9666],[-37.8183,144.9671],[-37.7894,144.9698]]],
+  ['tram','Route 75',  '#e1261c','Route 75',  [[-37.8630,145.1210],[-37.8290,145.0240],[-37.8183,144.9730],[-37.8183,144.9526]]],
+  ['tram','Route 59',  '#00b5e2','Route 59',  [[-37.7220,144.8830],[-37.7720,144.9170],[-37.8094,144.9526]]],
+  ['bus','Route 246',  '#7b5ea7','Route 246', [[-37.8000,144.9580],[-37.8140,144.9350],[-37.8280,144.9100]]],
+  ['bus','Route 605',  '#009b77','Route 605', [[-37.8094,144.9629],[-37.7750,145.0450],[-37.7930,145.1218]]],
+  ['bus','Route 750',  '#009b77','Route 750', [[-37.8769,145.0238],[-37.9050,145.1100],[-37.9250,145.1650]]],
+  ['bus','Route 901',  '#d4a017','Route 901', [[-37.8769,145.0238],[-37.9841,145.1282],[-38.1145,145.1212]]],
+  ['bus','Route 902',  '#d4a017','Route 902', [[-37.7839,144.8781],[-37.8794,144.8608],[-37.9301,144.8952]]],
+  ['bus','Route 903',  '#d4a017','Route 903', [[-37.7839,144.8781],[-37.8769,145.0238],[-37.9841,145.1282]]],
+  ['bus','Route 302',  '#7b5ea7','Route 302', [[-37.8183,144.9671],[-37.8183,145.0500],[-37.8182,145.1428]]],
+  ['bus','Route 401',  '#7b5ea7','Route 401', [[-37.8183,144.9671],[-37.8600,144.9840],[-37.8769,145.0238]]],
+];
+
+// ─── Key Melbourne stations/stops ────────────────────────────────────────────
+const STATIONS = [
+  // City Loop & key hubs
+  {name:'Flinders Street',  lat:-37.8182,lng:144.9671,type:'train',color:'#094c8d'},
+  {name:'Southern Cross',   lat:-37.8183,lng:144.9526,type:'train',color:'#094c8d'},
+  {name:'Melbourne Central',lat:-37.8098,lng:144.9631,type:'train',color:'#094c8d'},
+  {name:'Flagstaff',        lat:-37.8116,lng:144.9572,type:'train',color:'#094c8d'},
+  {name:'Parliament',       lat:-37.8114,lng:144.9730,type:'train',color:'#094c8d'},
+  // Major interchanges
+  {name:'Richmond',         lat:-37.8244,lng:144.9987,type:'train',color:'#094c8d'},
+  {name:'North Melbourne',  lat:-37.8047,lng:144.9426,type:'train',color:'#094c8d'},
+  {name:'Footscray',        lat:-37.8019,lng:144.8993,type:'train',color:'#094c8d'},
+  {name:'Caulfield',        lat:-37.8769,lng:145.0238,type:'train',color:'#8b1a4a'},
+  {name:'Clayton',          lat:-37.9210,lng:145.1202,type:'train',color:'#8b1a4a'},
+  {name:'Box Hill',         lat:-37.8196,lng:145.1228,type:'train',color:'#094c8d'},
+  {name:'Camberwell',       lat:-37.8274,lng:145.0588,type:'train',color:'#094c8d'},
+  {name:'Dandenong',        lat:-37.9841,lng:145.2161,type:'train',color:'#8b1a4a'},
+  {name:'Frankston',        lat:-38.1391,lng:145.1232,type:'train',color:'#159943'},
+  {name:'Werribee',         lat:-37.9014,lng:144.6604,type:'train',color:'#159943'},
+  {name:'Sunshine',         lat:-37.7871,lng:144.8310,type:'train',color:'#fc7f1e'},
+  {name:'Broadmeadows',     lat:-37.6815,lng:144.9176,type:'train',color:'#fc7f1e'},
+  {name:'Ringwood',         lat:-37.8116,lng:145.2276,type:'train',color:'#094c8d'},
+  // Tram stops
+  {name:'St Kilda',         lat:-37.8649,lng:144.9785,type:'tram', color:'#f5a800'},
+  {name:'Melbourne Zoo',    lat:-37.7839,lng:144.9507,type:'tram', color:'#f5a800'},
+  {name:'Docklands',        lat:-37.8181,lng:144.9433,type:'tram', color:'#f5a800'},
+  {name:'South Melbourne Market',lat:-37.8380,lng:144.9522,type:'tram',color:'#f5a800'},
+];
+
+// ─── Theme ──────────────────────────────────────────────────────────────────
+let isDark = true;
+let tileLayer = null;
+
+function initTheme(){
+  isDark = localStorage.getItem('tl-theme') !== 'light';
+  applyTheme(false);
+}
+
+function toggleTheme(){
+  isDark = !isDark;
+  localStorage.setItem('tl-theme', isDark ? 'dark' : 'light');
+  applyTheme(true);
+}
+
+function applyTheme(animate){
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  document.getElementById('theme-meta').content = isDark ? '#080f1a' : '#f0f4f8';
+  const icon = document.getElementById('theme-icon');
+  if(isDark){
+    icon.innerHTML = '<path d="M13.5 10.5a6 6 0 1 1-8-8 4.5 4.5 0 0 0 8 8z"/>';
+    icon.setAttribute('fill','currentColor');
+    icon.removeAttribute('stroke');
+  } else {
+    icon.innerHTML = '<circle cx="8" cy="8" r="3"/><line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/><line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/><line x1="3.2" y1="3.2" x2="4.6" y2="4.6"/><line x1="11.4" y1="11.4" x2="12.8" y2="12.8"/><line x1="12.8" y1="3.2" x2="11.4" y2="4.6"/><line x1="4.6" y1="11.4" x2="3.2" y2="12.8"/>';
+    icon.setAttribute('stroke','currentColor');
+    icon.setAttribute('stroke-width','1.5');
+    icon.setAttribute('stroke-linecap','round');
+    icon.setAttribute('fill','none');
+  }
+  if(tileLayer) tileLayer.setUrl(isDark ? TILE_DARK : TILE_LIGHT);
+  if(animate) setTimeout(()=>{ Object.values(markers).forEach(m=>{ if(m._v) m.setIcon(makeIcon(m._v)); }); }, 50);
+}
+
+// ─── Map ─────────────────────────────────────────────────────────────────────
+const map = L.map('map',{center:[-37.8136,144.9631],zoom:13,zoomControl:true,attributionControl:true});
+tileLayer = L.tileLayer(TILE_DARK,{attribution:ATTRIB,subdomains:'abcd',maxZoom:19}).addTo(map);
+map.whenReady(()=>{ setTimeout(()=>document.getElementById('loader').classList.add('out'),400); });
+
+// ─── Bus cluster layer ───────────────────────────────────────────────────────
+const busCluster = L.markerClusterGroup({
+  maxClusterRadius: 50,
+  disableClusteringAtZoom: 14,
+  spiderfyOnMaxZoom: true,
+  iconCreateFunction(cluster){
+    const c = cluster.getChildCount();
+    const sz = c > 100 ? 42 : c > 30 ? 36 : 30;
+    return L.divIcon({
+      html: `<div class="cluster-bus" style="width:${sz}px;height:${sz}px"><span>${c}</span></div>`,
+      className: '',
+      iconSize: [sz, sz],
+      iconAnchor: [sz/2, sz/2],
+    });
+  },
+});
+busCluster.addTo(map);
+
+// ─── Route polylines ─────────────────────────────────────────────────────────
+const routePolylines = {};
+
+function buildRouteLines(){
+  ROUTES.forEach(([mode, line, color, label, pts])=>{
+    const weight  = mode === 'train' ? 3.5 : mode === 'tram' ? 2 : 1.5;
+    const opacity = mode === 'bus' ? 0.35 : 0.50;
+    const pl = L.polyline(pts, {
+      color, weight, opacity,
+      lineJoin: 'round', lineCap: 'round',
+      interactive: false,
+    });
+    routePolylines[line] = pl;
+  });
+  // Show lines that pass filter
+  syncRouteLines();
+}
+
+function syncRouteLines(){
+  ROUTES.forEach(([mode, line])=>{
+    const pl = routePolylines[line];
+    if(!pl) return;
+    const show = fModes.has(mode) && fLines.has(line);
+    if(show && !map.hasLayer(pl)) pl.addTo(map);
+    if(!show && map.hasLayer(pl)) map.removeLayer(pl);
+  });
+}
+
+// ─── Station markers ─────────────────────────────────────────────────────────
+function buildStations(){
+  STATIONS.forEach(s=>{
+    const dotIcon = L.divIcon({
+      className: '',
+      iconSize: [9,9],
+      iconAnchor: [4.5,4.5],
+      html: `<div class="station-dot" style="background:${s.color}"></div>`,
+    });
+    const m = L.marker([s.lat, s.lng], {icon: dotIcon, zIndexOffset: -100});
+    m.bindTooltip(s.name, {
+      permanent: false, direction: 'top',
+      className: 'station-tt', offset: [0, -8],
+    });
+    m.addTo(map);
+  });
+}
+
+// ─── Filter State ────────────────────────────────────────────────────────────
+const fModes = new Set(['train','tram','bus','vline']);
+const fLines  = new Set(ROUTES.map(r=>r[1]));
+let   fSearch = '';
+
+function buildFilterPanel(){
+  const body = document.getElementById('fp-body');
+  body.innerHTML = '';
+
+  const mLabel = document.createElement('div'); mLabel.className='fp-label'; mLabel.textContent='Mode'; body.appendChild(mLabel);
+  [['train','🚆','Trains'],['tram','🚋','Trams'],['bus','🚌','Buses'],['vline','🚂','V/Line']].forEach(([mode,ico,name])=>{
+    const row = document.createElement('div'); row.className='mode-row';
+    row.innerHTML=`<span class="mode-ico">${ico}</span><span class="mode-name">${name}</span><span class="mode-cnt" id="fcnt-${mode}">0</span><div class="tog ${fModes.has(mode)?'on':''}" id="tog-${mode}"></div>`;
+    row.addEventListener('click',()=>{ toggleMode(mode); });
+    body.appendChild(row);
+  });
+
+  const lLabel = document.createElement('div'); lLabel.className='fp-label'; lLabel.textContent='Lines'; body.appendChild(lLabel);
+  ROUTES.forEach(([mode,line,color,label])=>{
+    const row = document.createElement('div');
+    row.className=`line-row ${fLines.has(line)?'':'off'}`;
+    row.id=`lr-${CSS.escape(line)}`;
+    row.innerHTML=`<div class="l-dot" style="background:${color}"></div><span class="l-name">${label}</span><div class="l-chk ${fLines.has(line)?'on':''}" id="lc-${CSS.escape(line)}">✓</div>`;
+    row.addEventListener('click',()=>{ toggleLine(line); });
+    body.appendChild(row);
+  });
+  updateFilterSearch();
+}
+
+function updateFilterSearch(){
+  const q = fSearch.toLowerCase();
+  ROUTES.forEach(([mode,line,color,label])=>{
+    const row = document.getElementById(`lr-${CSS.escape(line)}`);
+    if(!row) return;
+    const visible = !q || label.toLowerCase().includes(q) || line.toLowerCase().includes(q);
+    row.style.display = visible ? '' : 'none';
+  });
+}
+
+function toggleMode(mode){
+  if(fModes.has(mode)) fModes.delete(mode); else fModes.add(mode);
+  const tog = document.getElementById(`tog-${mode}`);
+  if(tog) tog.className = `tog ${fModes.has(mode)?'on':''}`;
+  applyFilters();
+}
+
+function toggleLine(line){
+  if(fLines.has(line)) fLines.delete(line); else fLines.add(line);
+  const chk = document.getElementById(`lc-${CSS.escape(line)}`);
+  const row = document.getElementById(`lr-${CSS.escape(line)}`);
+  if(chk){ chk.className=`l-chk ${fLines.has(line)?'on':''}`; }
+  if(row){ row.className=`line-row ${fLines.has(line)?'':'off'}`; }
+  applyFilters();
+}
+
+function filterShowAll(){
+  ROUTES.forEach(([m,l])=>{ fModes.add(m); fLines.add(l); });
+  ['train','tram','bus','vline'].forEach(m=>fModes.add(m));
+  buildFilterPanel();
+  applyFilters();
+}
+
+function filterClearAll(){
+  fModes.clear(); fLines.clear();
+  buildFilterPanel();
+  applyFilters();
+}
+
+function onFilterSearch(val){
+  fSearch = val;
+  updateFilterSearch();
+}
+
+function passesFilter(v){
+  if(!fModes.has(v.mode)) return false;
+  if(v._live) return true;
+  return fLines.has(v.line);
+}
+
+function applyFilters(){
+  // Toggle route polylines
+  syncRouteLines();
+
+  // Toggle vehicle markers
+  vehicles.forEach(v=>{
+    const m = markers[v.id];
+    if(!m) return;
+    if(passesFilter(v)){
+      if(v.mode === 'bus'){
+        if(!busCluster.hasLayer(m)) busCluster.addLayer(m);
+      } else {
+        if(!map.hasLayer(m)) m.addTo(map);
+      }
+    } else {
+      if(v.mode === 'bus'){
+        if(busCluster.hasLayer(m)) busCluster.removeLayer(m);
+      } else {
+        if(map.hasLayer(m)) map.removeLayer(m);
+      }
+    }
+  });
+  updateCounts(vehicles);
+}
+
+function updateFilterCounts(){
+  const c = {train:0,tram:0,bus:0,vline:0};
+  vehicles.forEach(v=>{ if(passesFilter(v)) c[v.mode]++; });
+  ['train','tram','bus','vline'].forEach(m=>{
+    const el = document.getElementById(`fcnt-${m}`);
+    if(el) el.textContent = c[m];
+  });
+}
+
+// ─── Filter Panel Toggle ─────────────────────────────────────────────────────
+let filterOpen = false;
+function toggleFilter(){
+  filterOpen = !filterOpen;
+  const fp = document.getElementById('filter-panel');
+  // Position below header (adjust if follow-bar visible)
+  const followBar = document.getElementById('follow-bar');
+  const topOffset = followBar.classList.contains('hidden') ? 66 : 98;
+  fp.style.top  = topOffset + 'px';
+  fp.style.left = '14px';
+  fp.classList.toggle('hidden', !filterOpen);
+  document.getElementById('filter-toggle').classList.toggle('active', filterOpen);
+}
+
+// ─── Markers ─────────────────────────────────────────────────────────────────
+const markers = {};
+
+// ─── Smooth interpolation between GPS snapshots ───────────────────────────────
+const interp = {};
+
+function startInterp(id, fromLat, fromLng, toLat, toLng, duration){
+  interp[id] = { fromLat, fromLng, toLat, toLng, startTime: performance.now(), duration };
+}
+
+function easeInOut(t){ return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+
+// ─── Follow vehicle ───────────────────────────────────────────────────────────
+let followingId = null;
+
+function startFollow(id){
+  followingId = id;
+  const v = vehicles.find(v=>v.id===id);
+  if(v){
+    document.getElementById('follow-label').textContent = v.label;
+    document.getElementById('follow-bar').classList.remove('hidden');
+    // Update follow button in detail panel if open
+    const btn = document.getElementById('dp-follow-btn');
+    if(btn){ btn.textContent = '📍 Stop Following'; btn.classList.add('following'); }
+  }
+}
+
+function stopFollow(){
+  followingId = null;
+  document.getElementById('follow-bar').classList.add('hidden');
+  const btn = document.getElementById('dp-follow-btn');
+  if(btn){ btn.textContent = '📍 Follow Vehicle'; btn.classList.remove('following'); }
+}
+
+function toggleFollow(){
+  if(followingId && followingId === selectedId){
+    stopFollow();
+  } else if(selectedId){
+    startFollow(selectedId);
+  }
+}
+
+// ─── Animation loop ───────────────────────────────────────────────────────────
+(function animLoop(){
+  const now = performance.now();
+  for(const id in interp){
+    const ip = interp[id];
+    const m  = markers[id];
+    if(!m){ delete interp[id]; continue; }
+    const t = Math.min(1, (now - ip.startTime) / ip.duration);
+    const e = easeInOut(t);
+    const lat = ip.fromLat + (ip.toLat - ip.fromLat) * e;
+    const lng = ip.fromLng + (ip.toLng - ip.fromLng) * e;
+    m.setLatLng([lat, lng]);
+    if(t >= 1) delete interp[id];
+    // Follow vehicle
+    if(followingId === id) map.panTo([lat, lng], {animate:false});
+  }
+  // Follow selected vehicle even when not interpolating
+  if(followingId && !interp[followingId]){
+    const m = markers[followingId];
+    if(m) map.panTo(m.getLatLng(), {animate:false});
+  }
+  requestAnimationFrame(animLoop);
+})();
+
+function makeIcon(v){
+  const dl  = v.delay > 2;
+  const col = dl ? '#ff3c5c' : v.color;
+  const bg  = col + '22';
+  const seed = typeof v.id==='string'
+    ? [...v.id].reduce((a,c)=>a+c.charCodeAt(0),0)
+    : Number(v.id);
+  const delay_ms = (seed * 173) % 2800;
+  const sz = v.mode === 'train' ? 32 : v.mode === 'vline' ? 32 : v.mode === 'tram' ? 28 : 24;
+
+  // Bearing arrow — only show if bearing is meaningful (>5°) and speed suggests movement
+  const hasBearing = (v.bearing > 5 || v.bearing < -5) && (v.speed > 0.5 || v.bearing > 5);
+  const arrowHtml = hasBearing
+    ? `<div class="vm-arrow" style="border-bottom-color:${col};transform:translateX(-50%) rotate(${v.bearing}deg)"></div>`
+    : '';
+
+  return L.divIcon({
+    className: '',
+    iconSize:   [sz, sz],
+    iconAnchor: [sz/2, sz/2],
+    html: `<div class="vm-inner" style="width:${sz}px;height:${sz}px;background:${bg};border:1.5px solid ${col};box-shadow:0 0 8px ${col}44">
+        <div class="vm-ring" style="border-color:${col};animation-delay:${delay_ms}ms"></div>
+        ${arrowHtml}
+        <span style="font-size:${Math.round(sz*0.44)}px;position:relative;z-index:1;line-height:1">${ICO[v.mode]}</span>
+      </div>`
+  });
+}
+
+function makeTooltip(v){
+  return `${v.label}${v.delay > 2 ? ' · <b style="color:#ff3c5c">+'+v.delay+'m late</b>' : ''}`;
+}
+
+function upsert(v){
+  if(markers[v.id]){
+    const m = markers[v.id];
+    if(v._live){
+      const cur = m.getLatLng();
+      const dist = Math.abs(cur.lat - v.lat) + Math.abs(cur.lng - v.lng);
+      if(dist > 0.00001){
+        startInterp(v.id, cur.lat, cur.lng, v.lat, v.lng, REFRESH_MS - 500);
+      }
+    } else {
+      m.setLatLng([v.lat, v.lng]);
+    }
+    if(m._lastDelay !== v.delay || m._lastColor !== v.color || m._lastBearing !== v.bearing){
+      m.setIcon(makeIcon(v));
+      m._lastDelay = v.delay; m._lastColor = v.color; m._lastBearing = v.bearing;
+    }
+    if(m.getTooltip()) m.setTooltipContent(makeTooltip(v));
+    m._v = v;
+    // Update detail panel if this vehicle is selected
+    if(selectedId === v.id) openDetail(v);
+  } else {
+    const sz = v.mode === 'train' || v.mode === 'vline' ? 32 : v.mode === 'tram' ? 28 : 24;
+    const m = L.marker([v.lat, v.lng], {icon: makeIcon(v)});
+    m._v = v; m._lastDelay = v.delay; m._lastColor = v.color; m._lastBearing = v.bearing;
+    m.bindTooltip(makeTooltip(v), {
+      permanent: false, direction: 'top',
+      className: 'vm-tt', offset: [0, -(sz/2 + 4)],
+    });
+    m.on('click', ()=>{ selectMarker(v.id); openDetail(v); });
+    if(passesFilter(v)){
+      if(v.mode === 'bus'){
+        busCluster.addLayer(m);
+      } else {
+        m.addTo(map);
+      }
+    }
+    markers[v.id] = m;
+  }
+}
+
+// After zoom ends, flush all markers to their correct GPS positions
+map.on('zoomend', () => {
+  for(const id in markers){
+    const m = markers[id];
+    const ip = interp[id];
+    if(ip){
+      const t = Math.min(1, (performance.now() - ip.startTime) / ip.duration);
+      const e = easeInOut(t);
+      m.setLatLng([
+        ip.fromLat + (ip.toLat - ip.fromLat) * e,
+        ip.fromLng + (ip.toLng - ip.fromLng) * e,
+      ]);
+    } else if(m._v){
+      m.setLatLng([m._v.lat, m._v.lng]);
+    }
+  }
+});
+
+function removeOldMarkers(currentIds){
+  const current = new Set(currentIds);
+  Object.keys(markers).forEach(id=>{
+    if(!current.has(id)){
+      if(markers[id]._v?.mode === 'bus'){
+        busCluster.removeLayer(markers[id]);
+      } else {
+        map.removeLayer(markers[id]);
+      }
+      delete markers[id];
+    }
+  });
+}
+
+let selectedId = null;
+
+function selectMarker(id){
+  if(selectedId && markers[selectedId]){
+    markers[selectedId]._icon && markers[selectedId]._icon.classList.remove('sel');
+  }
+  selectedId = id;
+  if(markers[id] && markers[id]._icon){
+    markers[id]._icon.classList.add('sel');
+    markers[id].setZIndexOffset(2000);
+  }
+}
+
+// ─── Occupancy helpers ───────────────────────────────────────────────────────
+const OCC_LABELS = ['Empty','Many seats','Few seats','Standing room','Crushed standing','Full','Not accepting'];
+const OCC_COLORS = ['#00ff9d','#00ff9d','#78be20','#f5a800','#ff7c20','#ff3c5c','#ff3c5c'];
+function occPct(status){ return [5, 20, 45, 65, 80, 95, 100][status] ?? 50; }
+
+// ─── Detail Panel ────────────────────────────────────────────────────────────
+function openDetail(v){
+  const panel = document.getElementById('detail-panel');
+  const dl    = v.delay > 2;
+  const col   = dl ? '#ff3c5c' : v.color;
+
+  document.getElementById('dp-bar').style.background  = v.color;
+  document.getElementById('dp-ico').style.background  = v.color + '22';
+  document.getElementById('dp-ico').style.boxShadow   = `0 0 16px ${v.color}44`;
+  document.getElementById('dp-ico').textContent       = ICO[v.mode];
+  document.getElementById('dp-name').textContent      = v.label;
+  document.getElementById('dp-dot').style.background  = v.color;
+  document.getElementById('dp-line').textContent      = v.line;
+  const src = document.getElementById('dp-src');
+  src.textContent   = v._live ? 'LIVE' : 'DEMO';
+  src.className     = `dp-src-badge ${v._live ? 'dp-src-live' : 'dp-src-demo'}`;
+
+  const rows = [
+    ['Status', dl
+      ? `<span class="dp-badge dl">+${v.delay} min late</span>`
+      : `<span class="dp-badge ok">On time</span>`],
+    v.dest ? ['Destination', v.dest] : null,
+    v.speed > 0 ? ['Speed', `${Math.round((v.speed * 3.6) || v.speed)} km/h`] : null,
+    v.bearing ? ['Bearing', `${Math.round(v.bearing)}°`] : null,
+    ['GPS', `${v.lat.toFixed(4)}, ${v.lng.toFixed(4)}`],
+    ['Mode', v.mode === 'vline' ? 'V/Line' : v.mode.charAt(0).toUpperCase() + v.mode.slice(1)],
+  ].filter(Boolean);
+
+  let bodyHtml = rows.map(([k,val],i)=>{
+    const isHtml = val.startsWith('<');
+    return `
+      ${i > 0 ? '<div class="dp-hr"></div>' : ''}
+      <div class="dp-row">
+        <span class="dp-k">${k}</span>
+        ${isHtml ? val : `<span class="dp-v">${val}</span>`}
+      </div>`;
+  }).join('');
+
+  // Occupancy
+  if(v.occupancy != null && v._live){
+    const pct = occPct(v.occupancy);
+    const lbl = OCC_LABELS[v.occupancy] ?? 'Unknown';
+    const clr = OCC_COLORS[v.occupancy] ?? '#f5a800';
+    bodyHtml += `
+      <div class="dp-hr"></div>
+      <div class="occ-bar-wrap">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="occ-label">Occupancy</span>
+          <span class="occ-text">${lbl}</span>
+        </div>
+        <div class="occ-bar-bg">
+          <div class="occ-bar-fill" style="width:${pct}%;background:${clr}"></div>
+        </div>
+      </div>`;
+  }
+
+  // Follow button
+  const isFollowing = followingId === v.id;
+  bodyHtml += `<button class="dp-follow-btn ${isFollowing?'following':''}" id="dp-follow-btn" onclick="toggleFollow()">${isFollowing ? '📍 Stop Following' : '📍 Follow Vehicle'}</button>`;
+
+  document.getElementById('dp-body').innerHTML = bodyHtml;
+  panel.classList.remove('hidden');
+}
+
+function closeDetail(){
+  document.getElementById('detail-panel').classList.add('hidden');
+  if(selectedId && markers[selectedId]){
+    markers[selectedId]._icon && markers[selectedId]._icon.classList.remove('sel');
+    markers[selectedId].setZIndexOffset(0);
+  }
+  selectedId = null;
+}
+
+// ─── Search ───────────────────────────────────────────────────────────────────
+let searchQuery = '';
+
+function onSearchInput(val){
+  searchQuery = val.trim().toLowerCase();
+  if(!searchQuery){ hideSearchDrop(); return; }
+  renderSearchResults();
+  showSearchDrop();
+}
+
+function showSearchDrop(){
+  if(searchQuery) document.getElementById('search-results').classList.add('show');
+}
+
+function hideSearchDrop(){
+  document.getElementById('search-results').classList.remove('show');
+}
+
+function renderSearchResults(){
+  const q = searchQuery;
+  if(!q){ hideSearchDrop(); return; }
+
+  // Search live vehicles
+  const seen = new Set();
+  const results = vehicles
+    .filter(v=>{
+      const match = v.label.toLowerCase().includes(q) ||
+                    v.line.toLowerCase().includes(q)  ||
+                    v.mode.toLowerCase().includes(q);
+      if(!match) return false;
+      const key = v.label;
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 8);
+
+  const el = document.getElementById('search-results');
+  if(!results.length){
+    el.innerHTML = '<div class="sr-empty">No results found</div>';
+    el.classList.add('show');
+    return;
+  }
+
+  el.innerHTML = results.map(v=>`
+    <div class="sr-item" onmousedown="searchSelectVehicle('${v.id}')">
+      <span class="sr-ico">${ICO[v.mode]}</span>
+      <div class="sr-info">
+        <div class="sr-name">${v.label}</div>
+        <div class="sr-sub">${v.mode === 'vline' ? 'V/Line' : v.mode.charAt(0).toUpperCase()+v.mode.slice(1)}${v.delay > 0 ? ` · +${v.delay}m` : ''}</div>
+      </div>
+    </div>`).join('');
+  el.classList.add('show');
+}
+
+function searchSelectVehicle(id){
+  hideSearchDrop();
+  document.getElementById('search-input').value = '';
+  searchQuery = '';
+
+  const m = markers[id];
+  const v = vehicles.find(v=>v.id===id);
+  if(!m || !v) return;
+
+  // Zoom to vehicle
+  map.flyTo([v.lat, v.lng], Math.max(map.getZoom(), 15), {duration:0.8});
+  setTimeout(()=>{ selectMarker(id); openDetail(v); }, 300);
+}
+
+// ─── Service Alerts ───────────────────────────────────────────────────────────
+let alerts = [];
+let alertsOpen = false;
+
+async function fetchAlerts(){
+  try {
+    const data = await fetch('/api/alerts', {signal: AbortSignal.timeout(8000)}).then(r=>r.json());
+    alerts = Array.isArray(data) ? data : [];
+    updateAlertsBadge();
+  } catch(e){ /* ignore */ }
+}
+
+function updateAlertsBadge(){
+  const badge = document.getElementById('alert-badge');
+  badge.textContent = alerts.length;
+  badge.classList.toggle('show', alerts.length > 0);
+  if(alertsOpen) renderAlerts();
+}
+
+function toggleAlerts(){
+  alertsOpen = !alertsOpen;
+  document.getElementById('alerts-panel').classList.toggle('hidden', !alertsOpen);
+  document.getElementById('alerts-btn').classList.toggle('active', alertsOpen);
+  if(alertsOpen) renderAlerts();
+}
+
+function renderAlerts(){
+  const el = document.getElementById('alerts-list');
+  if(!alerts.length){
+    el.innerHTML = '<div class="ap-empty">No active service alerts 🎉</div>';
+    return;
+  }
+  el.innerHTML = alerts.map(a=>{
+    const effectLabel = ALERT_EFFECTS[a.effect] || '';
+    return `<div class="alert-item">
+      ${effectLabel ? `<div class="alert-effect">⚠ ${effectLabel}</div>` : ''}
+      <div class="alert-title">${escHtml(a.header)}</div>
+      ${a.desc ? `<div class="alert-desc">${escHtml(a.desc).replace(/\n/g,'<br>')}</div>` : ''}
+      ${a.routes.length ? `<div class="alert-routes">${a.routes.map(r=>`<span class="alert-route-tag">${escHtml(r)}</span>`).join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Header / Status updates ─────────────────────────────────────────────────
+let lastUpdate = null;
+let nextRefreshSec = REFRESH_MS / 1000;
+
+function updateCounts(vs){
+  const c = {train:0,tram:0,bus:0,vline:0};
+  vs.forEach(v=>{ if(passesFilter(v)) c[v.mode]++; });
+  document.getElementById('ct').textContent = c.train;
+  document.getElementById('cm').textContent = c.tram;
+  document.getElementById('cb').textContent = c.bus;
+  document.getElementById('cv').textContent = c.vline;
+  document.getElementById('sb-total').textContent = c.train + c.tram + c.bus + c.vline;
+  // Show V/Line chip if any
+  if(c.vline > 0) document.getElementById('cv-chip').style.display = '';
+  updateFilterCounts();
+}
+
+function updateAgeDisplay(){
+  if(!lastUpdate){ document.getElementById('hdr-age').textContent = '—'; return; }
+  const s = Math.round((Date.now() - lastUpdate) / 1000);
+  document.getElementById('hdr-age').textContent = s < 60 ? `${s}s` : `${Math.floor(s/60)}m ${s%60}s`;
+}
+
+setInterval(()=>{
+  updateAgeDisplay();
+  if(nextRefreshSec > 0) nextRefreshSec--;
+  document.getElementById('sb-cd').textContent = nextRefreshSec;
+}, 1000);
+
+// Escape key — stop following or close panels
+document.addEventListener('keydown', e=>{
+  if(e.key === 'Escape'){
+    if(followingId){ stopFollow(); return; }
+    if(alertsOpen){ toggleAlerts(); return; }
+    if(selectedId){ closeDetail(); }
+  }
+});
+
+// ─── Live mode ───────────────────────────────────────────────────────────────
+let isLive = false;
+
+async function fetchLive(){
+  try {
+    const res = await fetch(API_URL, {signal: AbortSignal.timeout(9000)});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    if(!Array.isArray(data) || data.length === 0) throw new Error('No vehicles returned');
+
+    if(!isLive){
+      // Remove demo markers
+      vehicles.forEach(v=>{
+        if(!v._live){
+          if(v.mode === 'bus') busCluster.removeLayer(markers[v.id]);
+          else map.removeLayer(markers[v.id]);
+          delete markers[v.id];
+        }
+      });
+      clearInterval(demoTimer);
+      isLive = true;
+      document.getElementById('mode-badge').className = 'mode-badge live';
+      document.getElementById('mode-text').textContent = 'LIVE';
+    }
+
+    const currentIds = data.map(v=>v.id+'');
+    removeOldMarkers(currentIds);
+    vehicles = data.map(v=>({...v, _live:true}));
+    vehicles.forEach(upsert);
+    updateCounts(vehicles);
+    lastUpdate = Date.now();
+    nextRefreshSec = REFRESH_MS / 1000;
+    return true;
+  } catch(e){
+    console.warn('Live fetch failed:', e.message);
+    return false;
+  }
+}
+
+function manualRefresh(){
+  const btn = document.getElementById('refresh-btn');
+  btn.classList.add('spinning');
+  setTimeout(()=>btn.classList.remove('spinning'), 650);
+  nextRefreshSec = REFRESH_MS / 1000;
+  if(isLive){ fetchLive(); fetchAlerts(); }
+}
+
+// ─── Demo mode ───────────────────────────────────────────────────────────────
+let vehicles = [];
+let demoTimer = null;
+
+function spawnDemo(){
+  const all = []; let id = 0;
+  ROUTES.forEach(([mode,line,color,label,pts])=>{
+    const n = mode==='train' ? 4 : mode==='tram' ? 5 : 3;
+    for(let i=0;i<n;i++){
+      const frac=i/n, total=pts.length-1, raw=frac*total;
+      const seg=Math.min(Math.floor(raw),total-1), t=raw-seg;
+      const a=pts[seg], b=pts[seg+1];
+      all.push({
+        id: `demo_${id++}`, mode, line, color, label, dest:'',
+        lat: a[0]+(b[0]-a[0])*t,
+        lng: a[1]+(b[1]-a[1])*t,
+        pts, seg, t, fwd: i%2===0,
+        delay: Math.floor(Math.random()*7),
+        speed: mode==='train' ? 0.07 : mode==='tram' ? 0.038 : 0.028,
+        bearing: Math.random()*360,
+        _live: false, occupancy: null,
+      });
+    }
+  });
+  return all;
+}
+
+function tickDemo(){
+  vehicles = vehicles.map(v=>{
+    if(v._live) return v;
+    const pts=v.pts, n=pts.length;
+    let {seg,t,fwd}=v;
+    t += fwd ? v.speed/100 : -v.speed/100;
+    if(t>=1){t=0; seg=Math.min(seg+1,n-2);}
+    if(t<0){t=1; seg=Math.max(seg-1,0);}
+    if(seg>=n-2 && t>=0.99) fwd=false;
+    if(seg<=0 && t<=0.01) fwd=true;
+    const a=pts[seg], b=pts[seg+1];
+    // Compute bearing from segment direction
+    const dLng = b[1]-a[1], dLat = b[0]-a[0];
+    const bearing = (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
+    const nv={...v, lat:a[0]+(b[0]-a[0])*t, lng:a[1]+(b[1]-a[1])*t, seg,t,fwd,bearing};
+    if(Math.random()<0.003) nv.delay=Math.max(0,nv.delay+(Math.random()<0.4?1:-1));
+    upsert(nv);
+    return nv;
+  });
+  updateCounts(vehicles);
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+async function init(){
+  initTheme();
+  buildFilterPanel();
+  buildRouteLines();
+  buildStations();
+
+  // Start demo immediately
+  vehicles = spawnDemo();
+  vehicles.forEach(upsert);
+  updateCounts(vehicles);
+  lastUpdate = Date.now();
+  demoTimer = setInterval(tickDemo, 1400);
+
+  // Fetch service alerts
+  fetchAlerts();
+
+  // Try live
+  const live = await fetchLive();
+  if(live){
+    setInterval(fetchLive, REFRESH_MS);
+    setInterval(fetchAlerts, 120000); // refresh alerts every 2 min
+  } else {
+    document.getElementById('mode-badge').className = 'mode-badge demo';
+    document.getElementById('mode-text').textContent = 'DEMO';
+    setInterval(async()=>{
+      if(!isLive){
+        const ok = await fetchLive();
+        if(ok){
+          setInterval(fetchLive, REFRESH_MS);
+          setInterval(fetchAlerts, 120000);
+        }
+      }
+    }, 30000);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

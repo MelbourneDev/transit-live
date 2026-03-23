@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: transit-live
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: TRANSIT_API_KEY
+        sync: false
