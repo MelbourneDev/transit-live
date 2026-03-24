@@ -2600,61 +2600,44 @@ function updateHeaderAuth(){
 }
 
 async function initAuth(){
-  // ?clear=true → wipe auth state (for testing)
-  const params = new URLSearchParams(location.search);
-  if(params.get('clear') === 'true'){
-    clearAuthToken();
-    localStorage.removeItem('tl-avatar');
-    localStorage.removeItem('tl-ghost');
-    localStorage.removeItem('tl-onboarded');
-    localStorage.removeItem('tl-nudge-dismissed');
-    // Redirect without the param so it doesn't loop
-    const clean = location.pathname + (params.get('dev') ? '?dev=true' : '');
-    location.replace(clean);
-    return;
-  }
-
-  // ?dev=true → instant dev login (only works when server is in dev mode)
-  if(params.get('dev') === 'true'){
-    try{
-      const r = await fetch('/auth/dev-login');
-      if(r.ok){
-        const d = await r.json();
-        setAuthToken(d.token);
-        currentUser = d.user;
-        updateHeaderAuth();
-        refreshUserPin();
-        showToast('🛠️ Dev login — ' + d.user.username);
-        return;
-      }
-    } catch(e){ console.warn('Dev login failed:', e); }
-  }
-
   const token = getAuthToken();
   if(!token){
+    // No stored token — always show sign-in screen
     updateHeaderAuth();
-    // Show auth screen on fresh load (no token)
-    setTimeout(()=>openAuth(), 1200);
+    openAuth();
     return;
   }
+  // Validate stored token against server
   try{
-    const res = await fetch('/auth/me',{headers:{Authorization:'Bearer '+token}});
+    const res = await fetch('/auth/me', {headers:{Authorization:'Bearer '+token}});
     if(res.ok){
       currentUser = await res.json();
+      updateHeaderAuth();
+      refreshUserPin();
+      // Returning user with valid token — go straight to map
+      showToast(`Welcome back, ${currentUser.username}! 🎉`);
     } else {
+      // Token expired or invalid — clear and show sign-in
       clearAuthToken();
       currentUser = null;
-      setTimeout(()=>openAuth(), 1200); // expired token
+      updateHeaderAuth();
+      openAuth();
     }
-  } catch(e){ /* network error, keep token for retry */ }
-  updateHeaderAuth();
+  } catch(e){
+    // Network error — keep token, let them use app, retry later
+    updateHeaderAuth();
+  }
+}
+
+function clearSession(){
+  localStorage.clear();
+  location.reload();
 }
 
 // ── Auth modal ──────────────────────────────────────────────────────────
 function openAuth(){
   authShowEmailStep();
   document.getElementById('auth-overlay').classList.add('show');
-  dismissNudge();
 }
 function closeAuth(){
   document.getElementById('auth-overlay').classList.remove('show');
@@ -2719,14 +2702,7 @@ async function authSendOtp(){
     const data = await res.json();
     if(!res.ok){ errEl.textContent=data.error||'Failed to send code'; btn.disabled=false; btn.textContent='Send code 📨'; return; }
     _authEmail = email;
-    // Dev mode: auto-fill OTP
     authShowOtpStep(email);
-    if(data.dev_code){
-      setTimeout(()=>{
-        [...data.dev_code].forEach((ch,i)=>{const el=document.getElementById(`otp-${i}`);if(el)el.value=ch;});
-        showToast('Dev mode: code auto-filled');
-      },400);
-    }
   } catch(e){ errEl.textContent='Network error. Try again.'; }
   btn.disabled=false; btn.textContent='Send code 📨';
 }
@@ -2748,9 +2724,10 @@ async function authVerifyOtp(){
     refreshUserPin();
     closeAuth();
     if(!data.user.avatar){
-      // New user — show blocking avatar onboarding before map
+      // New user — show avatar creator fullscreen before revealing map
       showAvatarOnboard();
     } else {
+      // Returning user with saved avatar — go straight to map
       showToast(`Welcome back, ${data.user.username}! 🎉`);
     }
   } catch(e){ errEl.textContent='Network error. Try again.'; }
@@ -2988,6 +2965,7 @@ initAuth();
       <button class="auth-btn" id="auth-verify-btn" onclick="authVerifyOtp()">Verify ✓</button>
       <button class="auth-skip" onclick="authShowEmailStep()">← Back</button>
     </div>
+    <button onclick="clearSession()" style="display:block;margin:18px auto 0;font-size:.62rem;color:var(--text3);background:none;border:none;font-family:var(--font);cursor:pointer;opacity:0.55;padding:4px 8px">Clear session</button>
   </div>
 </div>
 
