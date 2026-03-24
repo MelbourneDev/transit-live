@@ -2600,8 +2600,22 @@ function updateHeaderAuth(){
 }
 
 async function initAuth(){
+  // ?clear=true → wipe auth state (for testing)
+  const params = new URLSearchParams(location.search);
+  if(params.get('clear') === 'true'){
+    clearAuthToken();
+    localStorage.removeItem('tl-avatar');
+    localStorage.removeItem('tl-ghost');
+    localStorage.removeItem('tl-onboarded');
+    localStorage.removeItem('tl-nudge-dismissed');
+    // Redirect without the param so it doesn't loop
+    const clean = location.pathname + (params.get('dev') ? '?dev=true' : '');
+    location.replace(clean);
+    return;
+  }
+
   // ?dev=true → instant dev login (only works when server is in dev mode)
-  if(new URLSearchParams(location.search).get('dev') === 'true'){
+  if(params.get('dev') === 'true'){
     try{
       const r = await fetch('/auth/dev-login');
       if(r.ok){
