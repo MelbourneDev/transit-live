@@ -985,6 +985,8 @@ button{font-family:var(--font);cursor:pointer}
   <div class="sb" id="sb-nearest" style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0">📍 Locating...</div>
   <div class="sb-div"></div>
   <div class="sb-cd">↻ <em id="sb-cd">—</em>s</div>
+  <div class="sb-div" id="sbar-logout-sep" style="display:none"></div>
+  <button id="sbar-logout" onclick="authSignOut()" style="display:none;font-size:.65rem;font-weight:800;color:#c03030;background:none;border:none;font-family:var(--font);cursor:pointer;padding:2px 0;white-space:nowrap">Sign out</button>
 </div>
 
 <!-- Toast -->
@@ -2578,24 +2580,29 @@ function setAuthToken(t){ localStorage.setItem('tl-auth-token', t); }
 function clearAuthToken(){ localStorage.removeItem('tl-auth-token'); }
 
 function updateHeaderAuth(){
-  const signinBtn = document.getElementById('hdr-signin-btn');
-  const avatarEl  = document.getElementById('hdr-avatar');
+  const signinBtn   = document.getElementById('hdr-signin-btn');
+  const avatarEl    = document.getElementById('hdr-avatar');
+  const sbarLogout  = document.getElementById('sbar-logout');
+  const sbarSep     = document.getElementById('sbar-logout-sep');
   if(currentUser){
     signinBtn.style.display = 'none';
     avatarEl.style.display  = 'flex';
-    // Show SVG avatar or emoji fallback
     const cfg = currentUser.avatar || AV_DEFAULTS;
     avatarEl.innerHTML = renderAvatarSVG(cfg, 36);
-    avatarEl.style.background = 'transparent';
-    avatarEl.style.padding    = '0';
-    avatarEl.style.border     = 'none';
-    avatarEl.style.width      = '36px';
-    avatarEl.style.height     = '36px';
+    avatarEl.style.background   = 'transparent';
+    avatarEl.style.padding      = '0';
+    avatarEl.style.border       = 'none';
+    avatarEl.style.width        = '36px';
+    avatarEl.style.height       = '36px';
     avatarEl.style.borderRadius = '10px';
-    avatarEl.style.overflow   = 'hidden';
+    avatarEl.style.overflow     = 'hidden';
+    if(sbarLogout) sbarLogout.style.display = 'block';
+    if(sbarSep)    sbarSep.style.display    = 'block';
   } else {
     signinBtn.style.display = 'block';
     avatarEl.style.display  = 'none';
+    if(sbarLogout) sbarLogout.style.display = 'none';
+    if(sbarSep)    sbarSep.style.display    = 'none';
   }
 }
 
@@ -2631,6 +2638,8 @@ async function initAuth(){
 
 function clearSession(){
   localStorage.clear();
+  sessionStorage.clear();
+  localStorage.setItem('tl-onboarded','1'); // prevent onboarding re-triggering
   location.reload();
 }
 
@@ -2745,12 +2754,10 @@ function openProfile(){
 }
 
 function authSignOut(){
-  clearAuthToken();
-  currentUser = null;
-  updateHeaderAuth();
-  closeSheet('profile-sheet');
-  showToast('Signed out 👋');
-  setTimeout(()=>openAuth(), 400);
+  localStorage.clear();
+  sessionStorage.clear();
+  localStorage.setItem('tl-onboarded','1'); // prevent onboarding re-triggering
+  location.reload();
 }
 
 // ── Avatar first-run onboarding ─────────────────────────────────────────
