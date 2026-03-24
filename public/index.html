@@ -657,6 +657,35 @@ button{font-family:var(--font);cursor:pointer}
 .prof-action-label{font-size:.9rem;font-weight:700;color:var(--text)}
 .prof-action-sublabel{font-size:.72rem;color:var(--text2);font-weight:600}
 .prof-action-arrow{margin-left:auto;color:var(--text3);font-size:.9rem}
+/* ── Avatar onboarding (first-run fullscreen) ──────────────────────── */
+#avatar-onboard{
+  position:absolute;inset:0;z-index:5900;
+  background:var(--bg);display:flex;flex-direction:column;
+  align-items:center;overflow-y:auto;
+  opacity:0;pointer-events:none;transition:opacity 0.35s ease}
+#avatar-onboard.show{opacity:1;pointer-events:all}
+.avob-header{
+  width:100%;padding:28px 24px 16px;text-align:center;flex-shrink:0}
+.avob-illo{font-size:3rem;margin-bottom:8px;display:block;
+  animation:ob-float 3s ease-in-out infinite}
+.avob-title{font-size:1.3rem;font-weight:900;color:var(--text);margin-bottom:6px}
+.avob-sub{font-size:.85rem;color:var(--text2);font-weight:600;line-height:1.5}
+.avob-preview-wrap{margin:4px auto 12px;
+  width:100px;height:100px;border-radius:24px;overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,.18);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  animation:dp-face-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both}
+.avob-preview-wrap svg{width:100px;height:100px;display:block}
+.avob-body{width:100%;max-width:420px;padding:0 16px 24px;flex:1}
+.avob-done{
+  width:calc(100% - 32px);max-width:388px;margin:0 16px 20px;
+  padding:15px;border-radius:var(--r-sm);border:none;
+  background:linear-gradient(135deg,var(--mint),var(--blue));
+  color:#fff;font-size:1.05rem;font-weight:800;font-family:var(--font);
+  box-shadow:0 4px 20px rgba(94,141,238,.4);flex-shrink:0}
+.avob-skip{display:block;text-align:center;padding:0 0 32px;
+  font-size:.8rem;color:var(--text3);font-weight:700;
+  cursor:pointer;background:none;border:none;font-family:var(--font);width:100%}
 /* Auth nudge bar */
 #auth-nudge{
   position:absolute;bottom:calc(52px + env(safe-area-inset-bottom));
@@ -1963,31 +1992,40 @@ function tickDemo(){
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────
-async function init(){
-  loadAvatar();
-  loadGhostMode();
-  buildFilterPanel();
-  buildRouteLines();
-  buildStations();
+function hideLoader(){ document.getElementById('loader')?.classList.add('out'); }
 
-  // Geolocation — initial fix then continuous watch
-  const loc=await locateUser();
-  if(loc){
-    userLoc=loc;
-    document.getElementById('ld-title').textContent='Found you! 🎉';
-    document.getElementById('ld-sub').textContent='Loading transit data...';
-    await new Promise(r=>setTimeout(r,600));
-    map.setView([loc.lat,loc.lng],14);
-    placeUserPin(loc.lat,loc.lng);
-  } else {
-    document.getElementById('sb-nearest').textContent='📍 Enable location for nearby info';
-  }
-  startLocationWatch();
-  initSearch();
-  // Hide loader
-  map.whenReady(()=>{
-    setTimeout(()=>document.getElementById('loader').classList.add('out'),300);
-  });
+async function init(){
+  // Guaranteed loader hide — no matter what happens below
+  const loaderGuard = setTimeout(hideLoader, 7000);
+
+  try {
+    loadAvatar();
+    loadGhostMode();
+    buildFilterPanel();
+    buildRouteLines();
+    buildStations();
+
+    // Geolocation — initial fix then continuous watch
+    const loc = await locateUser();
+    if(loc){
+      userLoc=loc;
+      document.getElementById('ld-title').textContent='Found you! 🎉';
+      document.getElementById('ld-sub').textContent='Loading transit data...';
+      await new Promise(r=>setTimeout(r,600));
+      map.setView([loc.lat,loc.lng],14);
+      try { placeUserPin(loc.lat,loc.lng); } catch(e){ console.warn('Pin error:',e); }
+    } else {
+      document.getElementById('sb-nearest').textContent='📍 Enable location for nearby info';
+    }
+    try { startLocationWatch(); } catch(e){ console.warn('Watch error:',e); }
+    initSearch();
+  } catch(e){ console.error('Init error:',e); }
+
+  // Hide loader — map.whenReady fires immediately since map has a view already
+  clearTimeout(loaderGuard);
+  map.whenReady(()=>setTimeout(hideLoader,300));
+  // Fallback in case whenReady never fires
+  setTimeout(hideLoader, 1500);
 
   // Demo
   vehicles=spawnDemo();
@@ -2347,6 +2385,23 @@ function updateHeaderAuth(){
 }
 
 async function initAuth(){
+  // ?dev=true → instant dev login (only works when server is in dev mode)
+  if(new URLSearchParams(location.search).get('dev') === 'true'){
+    try{
+      const r = await fetch('/auth/dev-login');
+      if(r.ok){
+        const d = await r.json();
+        setAuthToken(d.token);
+        currentUser = d.user;
+        updateHeaderAuth();
+        refreshUserPin();
+        showToast('🛠️ Dev login — ' + d.user.username);
+        scheduleNudge(999999); // suppress nudge in dev mode
+        return;
+      }
+    } catch(e){ console.warn('Dev login failed:', e); }
+  }
+
   const token = getAuthToken();
   if(!token){ updateHeaderAuth(); scheduleNudge(); return; }
   try{
@@ -2457,9 +2512,12 @@ async function authVerifyOtp(){
     updateHeaderAuth();
     refreshUserPin();
     closeAuth();
-    showToast(`Welcome, ${data.user.username}! 🎉`);
-    // Open avatar creator on first login (no avatar set)
-    if(!data.user.avatar) setTimeout(()=>openSheet('avatar-sheet'),600);
+    if(!data.user.avatar){
+      // New user — show blocking avatar onboarding before map
+      showAvatarOnboard();
+    } else {
+      showToast(`Welcome back, ${data.user.username}! 🎉`);
+    }
   } catch(e){ errEl.textContent='Network error. Try again.'; }
   btn.disabled=false; btn.textContent='Verify ✓';
 }
@@ -2483,7 +2541,72 @@ function authSignOut(){
   scheduleNudge(60000);
 }
 
-// ── Avatar creator ──────────────────────────────────────────────────────
+// ── Avatar first-run onboarding ─────────────────────────────────────────
+function showAvatarOnboard(){
+  avCfg = {...AV_DEFAULTS};
+  buildAvatarOnboard();
+  document.getElementById('avatar-onboard').classList.add('show');
+}
+function hideAvatarOnboard(){
+  document.getElementById('avatar-onboard').classList.remove('show');
+}
+
+function buildAvatarOnboard(){
+  const body = document.getElementById('avob-body');
+  const prev = document.getElementById('avob-preview');
+  if(!body||!prev) return;
+
+  function swatch(colors, key){
+    return `<div class="av-swatch-row">${colors.map(c=>
+      `<button class="av-swatch${avCfg[key]===c?' sel':''}" style="background:${c}" onclick="avObSet('${key}','${c}')"></button>`
+    ).join('')}</div>`;
+  }
+  function opts(options, key, labels){
+    return `<div class="av-opt-row">${options.map((o,i)=>
+      `<button class="av-opt${avCfg[key]===o?' sel':''}" onclick="avObSet('${key}','${o}')">${labels?labels[i]:o}</button>`
+    ).join('')}</div>`;
+  }
+
+  body.innerHTML = `
+    <div class="av-section"><div class="av-section-label">Skin tone</div>${swatch(AV_FACES,'face')}</div>
+    <div class="av-section"><div class="av-section-label">Hair style</div>${opts(AV_HAIR_STYLES,'hair',['None 🥚','Short','Long','Curly'])}</div>
+    <div class="av-section"><div class="av-section-label">Hair colour</div>${swatch(AV_HAIRS,'hairColor')}</div>
+    <div class="av-section"><div class="av-section-label">Eyes</div>${opts(AV_EYES,'eyes',['Normal','Happy ^-^','Stars ✦'])}</div>
+    <div class="av-section"><div class="av-section-label">Mouth</div>${opts(AV_MOUTHS,'mouth',['Smile','Grin','Neutral'])}</div>
+    <div class="av-section"><div class="av-section-label">Accessory</div>${opts(AV_ACCS,'accessory',['None','Glasses 👓','Hat 🎩','Headband'])}</div>
+    <div class="av-section"><div class="av-section-label">Outfit colour</div>${swatch(AV_OUTFITS,'outfit')}</div>`;
+
+  prev.innerHTML = renderAvatarSVG(avCfg, 100);
+}
+
+function avObSet(key, val){
+  avCfg[key] = val;
+  buildAvatarOnboard();
+}
+
+async function saveAvatarOnboard(){
+  const token = getAuthToken();
+  if(!token || !currentUser){ hideAvatarOnboard(); return; }
+  try{
+    await fetch('/auth/update-avatar',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify({avatar:avCfg})
+    });
+    currentUser.avatar = {...avCfg};
+    updateHeaderAuth();
+    refreshUserPin();
+  } catch(e){ /* silent — avatar saves best-effort */ }
+  hideAvatarOnboard();
+  showToast(`Welcome, ${currentUser.username}! 🎉`);
+}
+
+function skipAvatarOnboard(){
+  hideAvatarOnboard();
+  showToast(`Welcome, ${currentUser?.username||''}! You can set an avatar anytime from the profile.`);
+}
+
+// ── Avatar creator (in-sheet, for edits) ────────────────────────────────
 let avCfg = {...AV_DEFAULTS};
 
 function buildAvatarCreator(){
@@ -2590,6 +2713,21 @@ initAuth();
       <div id="dest-nearby-stops" style="font-size:.82rem;color:var(--text2);font-weight:600">Loading…</div>
     </div>
   </div>
+</div>
+
+<!-- Avatar first-run onboarding (fullscreen) -->
+<div id="avatar-onboard">
+  <div class="avob-header">
+    <span class="avob-illo">🎨</span>
+    <div class="avob-title">Create your avatar</div>
+    <div class="avob-sub">You're in! Now pick your look —<br>this shows on the map and your reports.</div>
+  </div>
+  <div class="avob-preview-wrap" id="avob-preview"></div>
+  <div class="avob-body" id="avob-body">
+    <!-- Swatch/option rows injected by buildAvatarOnboard() -->
+  </div>
+  <button class="avob-done" onclick="saveAvatarOnboard()">Done — take me to the map 🗺️</button>
+  <button class="avob-skip" onclick="skipAvatarOnboard()">Skip for now</button>
 </div>
 
 <!-- Auth overlay -->

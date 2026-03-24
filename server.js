@@ -1081,6 +1081,28 @@ app.post('/auth/update-avatar', authMiddleware, (req, res) => {
 // POST /auth/logout — client deletes its own token; server just acks
 app.post('/auth/logout', (_req, res) => res.json({ ok: true }));
 
+// GET /auth/dev-login — instant login for local dev (?dev=true bypass)
+// Never expose this on production — only works when JWT_SECRET is the default dev value
+app.get('/auth/dev-login', (req, res) => {
+  if (JWT_SECRET !== 'transit-live-dev-secret') {
+    return res.status(403).json({ error: 'Dev login only available in dev mode' });
+  }
+  const devEmail = 'dev@localhost';
+  if (!authUsers[devEmail]) {
+    authUsers[devEmail] = {
+      email: devEmail,
+      username: 'DevRider',
+      karma: 999,
+      avatar: null,
+      createdAt: Date.now(),
+    };
+    saveAuthUsers();
+  }
+  const user = authUsers[devEmail];
+  const token = jwt.sign({ email: devEmail }, JWT_SECRET, { expiresIn: '30d' });
+  res.json({ ok: true, token, user: { email: devEmail, username: user.username, karma: user.karma, avatar: user.avatar } });
+});
+
 // ── Static ────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
