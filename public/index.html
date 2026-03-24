@@ -61,6 +61,76 @@ button{font-family:var(--font);cursor:pointer}
   background:#ff6b6b;border:3px solid #fff;
   box-shadow:0 2px 10px rgba(255,107,107,.55);
   animation:user-pin-pulse 2.2s ease-in-out infinite}
+/* Avatar location pin */
+@keyframes av-glow{
+  0%,100%{box-shadow:0 0 0 0 rgba(91,141,238,.45),0 4px 16px rgba(0,0,0,.2)}
+  50%{box-shadow:0 0 0 10px rgba(91,141,238,0),0 4px 16px rgba(0,0,0,.2)}}
+.av-user-pin{
+  width:56px;height:56px;border-radius:16px;overflow:hidden;
+  border:3px solid white;box-shadow:0 4px 16px rgba(0,0,0,.25);
+  animation:av-glow 2.4s ease-in-out infinite;
+  transition:transform 0.6s cubic-bezier(0.34,1.2,0.64,1)}
+.av-user-pin svg{display:block;width:56px;height:56px}
+/* Address search bar */
+#addr-search-wrap{
+  position:absolute;
+  top:calc(66px + env(safe-area-inset-top));
+  left:12px;right:12px;z-index:900}
+#addr-search-bar{
+  display:flex;align-items:center;gap:8px;
+  background:var(--panel);border-radius:50px;
+  border:1.5px solid var(--border2);
+  box-shadow:0 4px 20px rgba(0,0,0,.15);
+  padding:0 16px;height:44px;backdrop-filter:blur(12px)}
+#addr-search-input{
+  flex:1;border:none;background:transparent;
+  font-family:var(--font);font-size:.88rem;font-weight:600;
+  color:var(--text);outline:none}
+#addr-search-input::placeholder{color:var(--text3)}
+.addr-search-icon{font-size:1rem;opacity:0.5;flex-shrink:0}
+.addr-clear-btn{
+  font-size:.8rem;color:var(--text3);background:none;border:none;
+  cursor:pointer;padding:2px 0;font-family:var(--font);line-height:1}
+#addr-dropdown{
+  position:absolute;top:calc(100% + 6px);left:0;right:0;
+  background:var(--panel);border-radius:16px;
+  border:1.5px solid var(--border2);
+  box-shadow:0 8px 32px rgba(0,0,0,.18);
+  overflow:hidden;display:none;backdrop-filter:blur(12px)}
+#addr-dropdown.show{display:block}
+.addr-result{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 16px;cursor:pointer;
+  border-bottom:1px solid var(--border);transition:background 0.15s}
+.addr-result:last-child{border-bottom:none}
+.addr-result:hover{background:rgba(91,141,238,.07)}
+.addr-result-ico{font-size:1rem;flex-shrink:0}
+.addr-result-main{font-size:.86rem;font-weight:700;color:var(--text)}
+.addr-result-sub{font-size:.72rem;color:var(--text2);font-weight:600}
+/* Destination pin */
+.dest-pin-wrap{position:relative}
+/* Journey bar */
+#journey-bar{
+  position:absolute;
+  bottom:calc(52px + env(safe-area-inset-bottom));
+  left:12px;right:12px;z-index:950;
+  background:linear-gradient(135deg,#3d3580,#5b8dee);
+  border-radius:16px;padding:12px 16px;
+  display:flex;align-items:center;gap:12px;
+  box-shadow:0 6px 28px rgba(61,53,128,.35);
+  transform:translateY(120%);transition:transform 0.4s cubic-bezier(0.34,1.2,0.64,1)}
+#journey-bar.show{transform:translateY(0)}
+.jb-ico{font-size:1.5rem}
+.jb-txt{flex:1;color:#fff}
+.jb-title{font-size:.9rem;font-weight:800;line-height:1.3}
+.jb-sub{font-size:.75rem;opacity:.8;font-weight:600}
+.jb-close{background:rgba(255,255,255,.18);border:none;color:#fff;
+  font-size:.85rem;border-radius:20px;padding:5px 10px;font-family:var(--font);
+  font-weight:700;cursor:pointer}
+/* Journey vehicle highlight */
+.vm-wrap.journey-hl .vm-inner{
+  filter:drop-shadow(0 0 10px rgba(91,141,238,.9)) drop-shadow(0 0 20px rgba(91,141,238,.5)) !important;
+  animation-name:vm-bob,journey-pulse !important}
 /* ── Leaflet overrides ─────────────────────────────────────────────── */
 .leaflet-control-zoom{border:none!important;box-shadow:var(--shadow)!important}
 .leaflet-control-zoom a{
@@ -685,6 +755,26 @@ button{font-family:var(--font);cursor:pointer}
   </button>
 </header>
 
+<!-- Address search bar -->
+<div id="addr-search-wrap">
+  <div id="addr-search-bar">
+    <span class="addr-search-icon">🔍</span>
+    <input id="addr-search-input" type="text" placeholder="Search an address or place..." autocomplete="off" autocorrect="off"/>
+    <button class="addr-clear-btn" id="addr-clear-btn" onclick="clearAddrSearch()" style="display:none">✕</button>
+  </div>
+  <div id="addr-dropdown"></div>
+</div>
+
+<!-- Journey bar -->
+<div id="journey-bar">
+  <div class="jb-ico">🗺️</div>
+  <div class="jb-txt">
+    <div class="jb-title" id="jb-title">Journey mode</div>
+    <div class="jb-sub" id="jb-sub">Finding vehicles heading your way…</div>
+  </div>
+  <button class="jb-close" onclick="clearDestination()">✕ Clear</button>
+</div>
+
 <!-- Follow bar -->
 <div id="follow-bar">
   📍 Following <em id="follow-label">—</em>
@@ -1070,21 +1160,50 @@ function passesProximity(v){
   return haversine(userLoc.lat,userLoc.lng,v.lat,v.lng)<=r;
 }
 
-function placeUserPin(lat,lng,accuracy){
-  if(userLocMarker){map.removeLayer(userLocMarker);userLocMarker=null;}
-  if(userAccCircle){map.removeLayer(userAccCircle);userAccCircle=null;}
-  const icon=L.divIcon({
-    className:'',iconSize:[18,18],iconAnchor:[9,9],
-    html:'<div class="user-loc-pin"></div>'
-  });
-  userLocMarker=L.marker([lat,lng],{icon,zIndexOffset:1500}).addTo(map);
-  userLocMarker.bindTooltip('You are here 📍',{className:'vm-tt',direction:'top',offset:[0,-12]});
-  if(accuracy>20){
-    userAccCircle=L.circle([lat,lng],{
-      radius:accuracy,color:'#ff6b6b',fillColor:'#ff6b6b',
-      fillOpacity:0.06,weight:1.5,opacity:0.25,interactive:false
-    }).addTo(map);
+function makePinHTML(){
+  // Use currentUser.avatar if available, else pulsing coral circle
+  if(currentUser && currentUser.avatar){
+    return `<div class="av-user-pin">${renderAvatarSVG(currentUser.avatar,56)}</div>`;
   }
+  const savedAvatar = (() => {
+    try{ return JSON.parse(localStorage.getItem('tl-avatar-cfg') || 'null'); }catch(e){ return null; }
+  })();
+  if(savedAvatar){
+    return `<div class="av-user-pin">${renderAvatarSVG(savedAvatar,56)}</div>`;
+  }
+  return '<div class="user-loc-pin" style="width:20px;height:20px"></div>';
+}
+const PIN_SZ = 56; // avatar always 56px; fallback 20px handled via CSS
+function placeUserPin(lat,lng){
+  if(userLocMarker){
+    userLocMarker.setLatLng([lat,lng]);
+    // Refresh icon in case auth state changed
+    userLocMarker.setIcon(_makeUserIcon());
+    return;
+  }
+  userLocMarker=L.marker([lat,lng],{icon:_makeUserIcon(),zIndexOffset:1500}).addTo(map);
+  userLocMarker.bindTooltip('You are here 📍',{className:'vm-tt',direction:'top',offset:[0,-PIN_SZ/2-6]});
+}
+function _makeUserIcon(){
+  const html = makePinHTML();
+  const hasAvatar = html.includes('av-user-pin');
+  const sz = hasAvatar ? PIN_SZ : 20;
+  return L.divIcon({className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],html});
+}
+function refreshUserPin(){
+  // Rebuild icon after avatar/auth change
+  if(userLocMarker) userLocMarker.setIcon(_makeUserIcon());
+}
+
+function startLocationWatch(){
+  if(!navigator.geolocation) return;
+  navigator.geolocation.watchPosition(pos=>{
+    const lat=pos.coords.latitude, lng=pos.coords.longitude;
+    userLoc={lat,lng};
+    placeUserPin(lat,lng);
+    updateNearestVehicle();
+    if(destLoc) updateJourneyLine();
+  },{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
 }
 
 function updateNearestVehicle(){
@@ -1334,45 +1453,46 @@ function makeInspectorSVG(){
 }
 
 // ── makeIcon ───────────────────────────────────────────────────────────
-// Returns sprite size in px; 0 = dot mode (zoom ≤11)
+// z≤12 → dot (16 or 20px); z13+ → face character
 function getIconSz(){
   const z = map.getZoom ? map.getZoom() : 14;
-  if(z >= 16) return 64;
-  if(z === 15) return 50;
-  if(z === 14) return 38;
-  if(z === 13) return 28;
-  if(z === 12) return 20;
-  return 0; // dot mode
+  if(z >= 17) return 52;
+  if(z === 16) return 44;
+  if(z === 15) return 38;
+  if(z === 14) return 32;
+  if(z === 13) return 26;
+  if(z === 12) return 20; // dot
+  return 16;              // dot (z≤11)
 }
 
 function makeIcon(v){
   const delayed = v.delay>2;
-  const sz = getIconSz(); // square px size; 0 = dot mode
+  const sz = getIconSz();
   const color = MODE_COLOR[v.mode]||v.color||'#5b8dee';
   const glowCol = (delayed?'#ff6b6b':color)+'66';
   const seed = typeof v.id==='string'
     ? [...v.id].reduce((a,c)=>a+c.charCodeAt(0),0) : Number(v.id);
   const bobDelay = (seed*173)%2200;
+  const isDot = sz <= 20;
 
-  if(sz===0){
-    const dot=16;
+  if(isDot){
     return L.divIcon({
-      className:'',iconSize:[dot,dot],iconAnchor:[dot/2,dot/2],
-      html:`<div class="vm-wrap" style="width:${dot}px;height:${dot}px">
+      className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],
+      html:`<div class="vm-wrap" style="width:${sz}px;height:${sz}px">
         <div class="vm-inner" style="animation-delay:${bobDelay}ms">
-          <div style="width:${dot}px;height:${dot}px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 1px 6px rgba(0,0,0,.35)"></div>
+          <div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 1px 5px rgba(0,0,0,.3)"></div>
         </div></div>`
     });
   }
 
-  const pad=6; const sq=sz+pad;
+  const pad=4; const sq=sz+pad;
   const svg=makeFaceSVG(v.mode,delayed,color,sz,v.label);
   return L.divIcon({
     className:'',
     iconSize:[sq,sq],
     iconAnchor:[sq/2,sq/2],
     html:`<div class="vm-wrap" style="width:${sq}px;height:${sq}px">
-      <div class="vm-inner" style="animation-delay:${bobDelay}ms;filter:drop-shadow(0 3px 8px ${glowCol})">
+      <div class="vm-inner" style="animation-delay:${bobDelay}ms;filter:drop-shadow(0 2px 6px ${glowCol})">
         ${svg}
       </div>
     </div>`
@@ -1785,6 +1905,7 @@ async function fetchLive(){
     vehicles=data.map(v=>({...v,_live:true}));
     vehicles.forEach(upsert);
     updateCounts(vehicles);
+    if(destLoc) updateJourneyVehicles();
     lastUpdate=Date.now();
     nextRefreshSec=REFRESH_MS/1000;
     return true;
@@ -1849,18 +1970,20 @@ async function init(){
   buildRouteLines();
   buildStations();
 
-  // Geolocation
+  // Geolocation — initial fix then continuous watch
   const loc=await locateUser();
   if(loc){
     userLoc=loc;
     document.getElementById('ld-title').textContent='Found you! 🎉';
     document.getElementById('ld-sub').textContent='Loading transit data...';
     await new Promise(r=>setTimeout(r,600));
-    map.setView([loc.lat,loc.lng],17);
-    placeUserPin(loc.lat,loc.lng,50);
+    map.setView([loc.lat,loc.lng],14);
+    placeUserPin(loc.lat,loc.lng);
   } else {
     document.getElementById('sb-nearest').textContent='📍 Enable location for nearby info';
   }
+  startLocationWatch();
+  initSearch();
   // Hide loader
   map.whenReady(()=>{
     setTimeout(()=>document.getElementById('loader').classList.add('out'),300);
@@ -1895,6 +2018,200 @@ async function init(){
   // Onboarding
   if(!localStorage.getItem('tl-onboarded')) setTimeout(showOnboarding,800);
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// ── ADDRESS SEARCH ──────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+
+let _searchTimer = null;
+let destLoc = null;       // {lat, lng, name}
+let destMarker = null;
+let journeyLine = null;
+const journeyHighlightedIds = new Set();
+
+function initSearch(){
+  const inp = document.getElementById('addr-search-input');
+  if(!inp) return;
+  inp.addEventListener('input', () => {
+    const q = inp.value.trim();
+    document.getElementById('addr-clear-btn').style.display = q ? 'block' : 'none';
+    clearTimeout(_searchTimer);
+    if(q.length < 2){ closeAddrDropdown(); return; }
+    _searchTimer = setTimeout(()=>doAddrSearch(q), 350);
+  });
+  inp.addEventListener('keydown', e=>{
+    if(e.key==='Escape'){ clearAddrSearch(); inp.blur(); }
+  });
+  // Close dropdown on map click
+  map.on('click', closeAddrDropdown);
+}
+
+async function doAddrSearch(q){
+  try{
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&countrycodes=au&limit=5&format=json&addressdetails=1`;
+    const res = await fetch(url, {headers:{'Accept-Language':'en'}});
+    const data = await res.json();
+    showAddrDropdown(data);
+  }catch(e){ closeAddrDropdown(); }
+}
+
+function showAddrDropdown(results){
+  const dd = document.getElementById('addr-dropdown');
+  if(!results.length){ dd.classList.remove('show'); dd.innerHTML=''; return; }
+  dd.innerHTML = results.map((r,i)=>{
+    const parts = r.display_name.split(',');
+    const main  = parts[0].trim();
+    const sub   = parts.slice(1,3).join(',').trim();
+    return `<div class="addr-result" onclick="selectAddrResult(${r.lat},${r.lon},'${escHtml(main)}','${escHtml(r.display_name)}')">
+      <span class="addr-result-ico">📍</span>
+      <div><div class="addr-result-main">${escHtml(main)}</div><div class="addr-result-sub">${escHtml(sub)}</div></div>
+    </div>`;
+  }).join('');
+  dd.classList.add('show');
+}
+
+function closeAddrDropdown(){
+  document.getElementById('addr-dropdown')?.classList.remove('show');
+}
+
+function clearAddrSearch(){
+  document.getElementById('addr-search-input').value = '';
+  document.getElementById('addr-clear-btn').style.display = 'none';
+  closeAddrDropdown();
+}
+
+function selectAddrResult(lat, lng, name, fullAddr){
+  clearAddrSearch();
+  document.getElementById('addr-search-input').blur();
+  // Fly to location
+  map.flyTo([+lat,+lng], Math.max(map.getZoom(),15), {duration:1.2});
+  // Place destination pin
+  placeDestPin(+lat, +lng, name, fullAddr);
+}
+
+function placeDestPin(lat, lng, name, fullAddr){
+  if(destMarker){ map.removeLayer(destMarker); destMarker=null; }
+  const pinSvg = `<svg width="32" height="44" viewBox="0 0 32 44" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 2 C8.27 2 2 8.27 2 16 C2 27 16 42 16 42 C16 42 30 27 30 16 C30 8.27 23.73 2 16 2Z" fill="#5b8dee" stroke="white" stroke-width="2"/>
+    <circle cx="16" cy="16" r="7" fill="white" opacity="0.9"/>
+    <circle cx="16" cy="16" r="4" fill="#5b8dee"/>
+  </svg>`;
+  const icon = L.divIcon({className:'',iconSize:[32,44],iconAnchor:[16,44],html:pinSvg});
+  destMarker = L.marker([lat,lng],{icon,zIndexOffset:2000}).addTo(map);
+  destMarker.on('click', ()=>openDestSheet(lat,lng,name,fullAddr));
+  openDestSheet(lat, lng, name, fullAddr);
+}
+
+function openDestSheet(lat, lng, name, fullAddr){
+  document.getElementById('dest-sheet-title').textContent = `📍 ${name}`;
+  document.getElementById('dest-sheet-addr').textContent  = fullAddr;
+  document.getElementById('dest-nearby-stops').textContent = 'Loading…';
+  openSheet('dest-sheet');
+  // Store pending destination (activated on "Go here")
+  destLoc = {lat, lng, name};
+  // Load nearby stops async
+  fetch(`/api/stops/nearby?lat=${lat}&lng=${lng}`)
+    .then(r=>r.json())
+    .then(d=>{
+      const el = document.getElementById('dest-nearby-stops');
+      if(!el) return;
+      const stops = Array.isArray(d) ? d.slice(0,5) : [];
+      el.innerHTML = stops.length
+        ? stops.map(s=>`<div style="padding:3px 0">🚏 ${escHtml(s.name||s.stop_name||'Stop')}</div>`).join('')
+        : 'No stop data available';
+    }).catch(()=>{
+      const el = document.getElementById('dest-nearby-stops');
+      if(el) el.textContent = 'Could not load stops';
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ── JOURNEY MODE ────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+
+function bearingBetween(lat1,lng1,lat2,lng2){
+  const φ1=lat1*Math.PI/180, φ2=lat2*Math.PI/180;
+  const Δλ=(lng2-lng1)*Math.PI/180;
+  const y=Math.sin(Δλ)*Math.cos(φ2);
+  const x=Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
+  return(Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+function bearingDiff(a,b){const d=Math.abs(a-b)%360;return d>180?360-d:d;}
+
+function activateJourneyMode(){
+  closeSheet('dest-sheet');
+  if(!destLoc) return;
+  updateJourneyLine();
+  updateJourneyVehicles();
+  document.getElementById('journey-bar').classList.add('show');
+}
+
+function updateJourneyLine(){
+  if(!userLoc||!destLoc) return;
+  const pts=[[userLoc.lat,userLoc.lng],[destLoc.lat,destLoc.lng]];
+  if(journeyLine){ journeyLine.setLatLngs(pts); return; }
+  journeyLine=L.polyline(pts,{
+    color:'#5b8dee',weight:3,opacity:0.55,
+    dashArray:'10 8',lineCap:'round',lineJoin:'round',interactive:false
+  }).addTo(map);
+}
+
+function updateJourneyVehicles(){
+  if(!userLoc||!destLoc){ clearJourneyHighlights(); return; }
+  const bearingToDest = bearingBetween(userLoc.lat,userLoc.lng,destLoc.lat,destLoc.lng);
+
+  // Score vehicles: heading roughly toward dest + close to user
+  const candidates = vehicles
+    .filter(v=>passesFilter(v) && typeof v.bearing==='number')
+    .map(v=>{
+      const bd   = bearingDiff(v.bearing, bearingToDest);
+      const dist = haversine(userLoc.lat,userLoc.lng,v.lat,v.lng);
+      return {v, bd, dist};
+    })
+    .filter(({bd})=>bd<90) // within 90° of correct direction
+    .sort((a,b)=>a.dist-b.dist)
+    .slice(0,3);
+
+  // Clear old highlights
+  clearJourneyHighlights();
+
+  candidates.forEach(({v})=>{
+    journeyHighlightedIds.add(v.id);
+    const el=markers[v.id]?._icon?.querySelector('.vm-wrap');
+    if(el) el.classList.add('journey-hl');
+  });
+
+  const n=candidates.length;
+  const jb=document.getElementById('journey-bar');
+  const modes={train:'trains',tram:'trams',bus:'buses',vline:'coaches'};
+  if(n===0){
+    document.getElementById('jb-title').textContent='No vehicles heading your way';
+    document.getElementById('jb-sub').textContent='Try again in a moment';
+  } else {
+    document.getElementById('jb-title').textContent=`${n} vehicle${n>1?'s':''} heading your way`;
+    const names=candidates.map(({v})=>v.label||v.mode).join(', ');
+    document.getElementById('jb-sub').textContent=names;
+  }
+}
+
+function clearJourneyHighlights(){
+  journeyHighlightedIds.forEach(id=>{
+    const el=markers[id]?._icon?.querySelector('.vm-wrap');
+    if(el) el.classList.remove('journey-hl');
+  });
+  journeyHighlightedIds.clear();
+}
+
+function clearDestination(){
+  if(destMarker){ map.removeLayer(destMarker); destMarker=null; }
+  if(journeyLine){ map.removeLayer(journeyLine); journeyLine=null; }
+  clearJourneyHighlights();
+  destLoc=null;
+  document.getElementById('journey-bar').classList.remove('show');
+}
+
+// Refresh journey vehicle highlights on each data update
+const _origUpdateCounts = typeof updateCounts==='function' ? updateCounts : null;
 
 // ═══════════════════════════════════════════════════════════════════════
 // ── AUTH SYSTEM ─────────────────────────────────────────────────────────
@@ -2138,6 +2455,7 @@ async function authVerifyOtp(){
     setAuthToken(data.token);
     currentUser = data.user;
     updateHeaderAuth();
+    refreshUserPin();
     closeAuth();
     showToast(`Welcome, ${data.user.username}! 🎉`);
     // Open avatar creator on first login (no avatar set)
@@ -2211,6 +2529,7 @@ async function saveAvatar(){
     if(res.ok){
       currentUser.avatar = {...avCfg};
       updateHeaderAuth();
+      refreshUserPin();
       closeSheet('avatar-sheet');
       showToast('Avatar saved! 🎨');
     }
@@ -2252,6 +2571,26 @@ function dismissNudge(){
 init();
 initAuth();
 </script>
+
+<!-- Destination sheet -->
+<div class="sheet" id="dest-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <div class="sheet-title" id="dest-sheet-title">📍 Destination</div>
+    <button class="sheet-close" onclick="closeSheet('dest-sheet')">✕</button>
+  </div>
+  <div class="sheet-body">
+    <div style="padding:12px 20px 0;color:var(--text2);font-size:.85rem;font-weight:600;line-height:1.5" id="dest-sheet-addr">—</div>
+    <div style="padding:8px 20px 16px;display:flex;gap:10px">
+      <button class="auth-btn" style="flex:1" onclick="activateJourneyMode()">🗺️ Go here</button>
+      <button class="auth-btn" style="flex:1;background:var(--bg2);color:var(--text);box-shadow:none" onclick="closeSheet('dest-sheet')">Cancel</button>
+    </div>
+    <div style="padding:0 20px 20px">
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px">Nearby stops</div>
+      <div id="dest-nearby-stops" style="font-size:.82rem;color:var(--text2);font-weight:600">Loading…</div>
+    </div>
+  </div>
+</div>
 
 <!-- Auth overlay -->
 <div id="auth-overlay">
