@@ -2712,6 +2712,12 @@ async function authSendOtp(){
     if(!res.ok){ errEl.textContent=data.error||'Failed to send code'; btn.disabled=false; btn.textContent='Send code 📨'; return; }
     _authEmail = email;
     authShowOtpStep(email);
+    if(data.dev_code){
+      setTimeout(()=>{
+        [...data.dev_code].forEach((ch,i)=>{const el=document.getElementById(`otp-${i}`);if(el)el.value=ch;});
+        showToast('Dev: OTP auto-filled (' + data.dev_code + ')');
+      },300);
+    }
   } catch(e){ errEl.textContent='Network error. Try again.'; }
   btn.disabled=false; btn.textContent='Send code 📨';
 }
