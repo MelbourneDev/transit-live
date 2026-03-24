@@ -1,11 +1,13 @@
 require('dotenv').config();
-const express  = require('express');
-const cors     = require('cors');
-const fetch    = require('node-fetch');
-const protobuf = require('protobufjs');
-const path     = require('path');
-const crypto   = require('crypto');
-const fs       = require('fs');
+const express    = require('express');
+const cors       = require('cors');
+const fetch      = require('node-fetch');
+const protobuf   = require('protobufjs');
+const path       = require('path');
+const crypto     = require('crypto');
+const fs         = require('fs');
+const nodemailer = require('nodemailer');
+const jwt        = require('jsonwebtoken');
 
 const app     = express();
 const PORT    = process.env.PORT || 3000;
@@ -15,8 +17,37 @@ const API_KEY = process.env.TRANSIT_API_KEY || '';
 const PTV_DEV_ID  = process.env.PTV_DEV_ID  || '';
 const PTV_API_KEY = process.env.PTV_API_KEY  || '';
 
+// Auth config
+const JWT_SECRET  = process.env.JWT_SECRET  || 'transit-live-dev-secret';
+const EMAIL_USER  = process.env.EMAIL_USER  || '';
+const EMAIL_PASS  = process.env.EMAIL_PASS  || '';
+
 // Inspector reports persistence
 const INSPECTORS_FILE = path.join(__dirname, 'inspectors.json');
+
+// Auth users persistence
+const USERS_FILE = path.join(__dirname, 'users.json');
+let authUsers = {};
+if (fs.existsSync(USERS_FILE)) {
+  try { authUsers = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); } catch(e) {}
+}
+function saveAuthUsers() {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(authUsers, null, 2));
+}
+
+// OTP store: email → { code, expires }
+const otpStore = new Map();
+
+function authMiddleware(req, res, next) {
+  const token = (req.headers.authorization || '').replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'No token' });
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch(e) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+}
 
 app.use(cors());
 app.use(express.json());
@@ -960,6 +991,95 @@ app.get('/api/user/:userId', (req, res) => {
   }
   res.json({ userId, ...inspectorData.users[userId] });
 });
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+// POST /auth/send-otp
+app.post('/auth/send-otp', async (req, res) => {
+  const { email } = req.body || {};
+  if (!email || !String(email).includes('@')) {
+    return res.status(400).json({ error: 'Invalid email' });
+  }
+  const lowerEmail = String(email).toLowerCase().trim();
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  otpStore.set(lowerEmail, { code, expires: Date.now() + 10 * 60 * 1000 });
+
+  // Dev mode (no email config) — return code directly so devs can test
+  if (!EMAIL_USER || !EMAIL_PASS) {
+    console.log(`[Auth] OTP for ${lowerEmail}: ${code}`);
+    return res.json({ ok: true, dev_code: code });
+  }
+
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: EMAIL_USER, pass: EMAIL_PASS },
+  });
+  try {
+    await transporter.sendMail({
+      from: `Transit-Live 🚆 <${EMAIL_USER}>`,
+      to: lowerEmail,
+      subject: `${code} is your Transit-Live code`,
+      html: `<div style="font-family:'Nunito',sans-serif;max-width:420px;margin:0 auto;padding:28px;background:#fef9f0;border-radius:16px">
+        <h2 style="color:#3d3580;margin:0 0 8px">🚆 Transit-Live</h2>
+        <p style="color:#7b75b0;margin:0 0 20px">Your one-time sign-in code:</p>
+        <div style="font-size:40px;font-weight:900;letter-spacing:10px;color:#3d3580;text-align:center;padding:24px;background:#fff;border-radius:12px;border:2px solid rgba(100,80,200,0.12)">${code}</div>
+        <p style="color:#c0bde0;font-size:12px;margin:16px 0 0;text-align:center">Expires in 10 minutes. Never share this code.</p>
+      </div>`,
+    });
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('[Auth] Email error:', e.message);
+    res.status(500).json({ error: 'Failed to send email' });
+  }
+});
+
+// POST /auth/verify-otp
+app.post('/auth/verify-otp', (req, res) => {
+  const { email, code } = req.body || {};
+  const lowerEmail = String(email || '').toLowerCase().trim();
+  const stored = otpStore.get(lowerEmail);
+  if (!stored || String(code) !== stored.code || Date.now() > stored.expires) {
+    return res.status(400).json({ error: 'Invalid or expired code' });
+  }
+  otpStore.delete(lowerEmail);
+
+  if (!authUsers[lowerEmail]) {
+    authUsers[lowerEmail] = {
+      email: lowerEmail,
+      username: generateUsername(),
+      karma: 0,
+      avatar: null,
+      createdAt: Date.now(),
+    };
+    saveAuthUsers();
+  }
+  const user = authUsers[lowerEmail];
+  const token = jwt.sign({ email: lowerEmail }, JWT_SECRET, { expiresIn: '30d' });
+  res.json({
+    ok: true,
+    token,
+    user: { email: lowerEmail, username: user.username, karma: user.karma, avatar: user.avatar },
+  });
+});
+
+// GET /auth/me
+app.get('/auth/me', authMiddleware, (req, res) => {
+  const user = authUsers[req.user.email];
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json({ email: req.user.email, username: user.username, karma: user.karma, avatar: user.avatar });
+});
+
+// POST /auth/update-avatar
+app.post('/auth/update-avatar', authMiddleware, (req, res) => {
+  const user = authUsers[req.user.email];
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  user.avatar = req.body.avatar || null;
+  saveAuthUsers();
+  res.json({ ok: true });
+});
+
+// POST /auth/logout — client deletes its own token; server just acks
+app.post('/auth/logout', (_req, res) => res.json({ ok: true }));
 
 // ── Static ────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {

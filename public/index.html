@@ -340,7 +340,7 @@ button{font-family:var(--font);cursor:pointer}
   box-shadow:0 6px 24px rgba(0,0,0,0.14);transition:background 0.3s;
   animation:dp-face-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both}
 @keyframes dp-face-pop{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
-.dp-face-big svg{width:80px;height:80px}
+.dp-face-big svg{width:80px;height:80px;display:block}
 .dp-close-btn{
   position:absolute;top:14px;right:14px;
   width:32px;height:32px;border-radius:50%;
@@ -484,6 +484,128 @@ button{font-family:var(--font);cursor:pointer}
   background:var(--bg);font-size:.7rem;font-weight:800;color:var(--text2);
   font-family:var(--font);transition:all 0.15s;text-align:center}
 .insp-vote-btn:hover{border-color:var(--mint);color:var(--mint)}
+/* ── Auth overlay ──────────────────────────────────────────────────── */
+#auth-overlay{
+  position:absolute;inset:0;z-index:5800;
+  background:rgba(61,53,128,0.6);backdrop-filter:blur(8px);
+  display:flex;align-items:center;justify-content:center;padding:24px;
+  opacity:0;pointer-events:none;transition:opacity 0.35s ease}
+#auth-overlay.show{opacity:1;pointer-events:all}
+.auth-card{
+  background:var(--panel);border-radius:28px;padding:32px 28px 28px;
+  max-width:360px;width:100%;box-shadow:var(--shadow-lg);text-align:center;
+  transform:scale(0.9) translateY(20px);
+  transition:transform 0.4s cubic-bezier(0.34,1.4,0.64,1)}
+#auth-overlay.show .auth-card{transform:scale(1) translateY(0)}
+.auth-illo{font-size:3.5rem;margin-bottom:10px;display:block;
+  animation:ob-float 3s ease-in-out infinite}
+.auth-title{font-size:1.25rem;font-weight:900;color:var(--text);margin-bottom:6px}
+.auth-sub{font-size:.85rem;color:var(--text2);font-weight:600;line-height:1.5;margin-bottom:20px}
+.auth-input{
+  width:100%;padding:13px 16px;border-radius:var(--r-sm);
+  border:1.5px solid var(--border2);background:var(--bg2);
+  font-family:var(--font);font-size:.95rem;font-weight:600;color:var(--text);
+  outline:none;transition:border-color 0.2s,box-shadow 0.2s;margin-bottom:12px}
+.auth-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(91,141,238,0.15)}
+.auth-btn{
+  width:100%;padding:14px;border-radius:var(--r-sm);border:none;
+  background:linear-gradient(135deg,var(--mint),var(--blue));
+  color:#fff;font-size:1rem;font-weight:800;font-family:var(--font);
+  box-shadow:0 4px 16px rgba(94,141,238,0.35);
+  transition:transform 0.15s,box-shadow 0.15s,opacity 0.2s}
+.auth-btn:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(94,141,238,0.45)}
+.auth-btn:active{transform:translateY(0)}
+.auth-btn:disabled{opacity:0.55;transform:none;cursor:not-allowed}
+.auth-skip{display:block;margin-top:14px;font-size:.78rem;color:var(--text3);
+  font-weight:700;cursor:pointer;background:none;border:none;font-family:var(--font)}
+.auth-skip:hover{color:var(--text2)}
+.auth-err{font-size:.78rem;color:var(--coral);font-weight:700;min-height:18px;margin-bottom:8px}
+/* OTP inputs */
+.otp-row{display:flex;gap:10px;justify-content:center;margin:16px 0}
+.otp-digit{
+  width:46px;height:56px;border-radius:var(--r-sm);border:2px solid var(--border2);
+  background:var(--bg2);font-family:var(--font);font-size:1.6rem;font-weight:900;
+  color:var(--text);text-align:center;outline:none;caret-color:var(--blue);
+  transition:border-color 0.2s,box-shadow 0.2s}
+.otp-digit:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(91,141,238,0.18)}
+/* Header auth btn */
+.hdr-signin{
+  padding:6px 13px;border-radius:20px;border:1.5px solid var(--border2);
+  background:linear-gradient(135deg,var(--mint),var(--blue));
+  color:#fff;font-size:.7rem;font-weight:800;font-family:var(--font);
+  white-space:nowrap;transition:opacity 0.2s,transform 0.15s}
+.hdr-signin:hover{opacity:0.88;transform:scale(1.05)}
+/* ── Avatar creator ────────────────────────────────────────────────── */
+.av-preview{
+  width:96px;height:96px;border-radius:24px;margin:0 auto 16px;
+  box-shadow:0 6px 24px rgba(0,0,0,0.14);overflow:hidden;display:flex;
+  align-items:center;justify-content:center;
+  animation:dp-face-pop 0.4s cubic-bezier(0.34,1.56,0.64,1) both}
+.av-preview svg{width:96px;height:96px;display:block}
+.av-section{padding:12px 20px 0}
+.av-section-label{font-size:.7rem;font-weight:800;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--text3);margin-bottom:10px}
+.av-swatch-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+.av-swatch{
+  width:34px;height:34px;border-radius:50%;cursor:pointer;
+  border:3px solid transparent;transition:transform 0.15s,border-color 0.15s}
+.av-swatch:hover{transform:scale(1.12)}
+.av-swatch.sel{border-color:var(--blue);transform:scale(1.12)}
+.av-opt-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+.av-opt{
+  padding:7px 13px;border-radius:20px;border:1.5px solid var(--border2);
+  background:var(--bg2);font-size:.78rem;font-weight:700;color:var(--text2);
+  font-family:var(--font);cursor:pointer;transition:all 0.15s}
+.av-opt:hover{border-color:var(--mint);color:var(--mint)}
+.av-opt.sel{background:rgba(78,205,196,0.12);border-color:var(--mint);color:var(--mint)}
+.av-save{
+  margin:16px 20px 8px;width:calc(100% - 40px);padding:14px;border-radius:var(--r-sm);
+  border:none;background:linear-gradient(135deg,var(--mint),var(--blue));
+  color:#fff;font-size:1rem;font-weight:800;font-family:var(--font)}
+/* ── Profile sheet ─────────────────────────────────────────────────── */
+.prof-hero{
+  display:flex;flex-direction:column;align-items:center;padding:24px 20px 16px;
+  border-bottom:1.5px solid var(--border);gap:8px}
+.prof-avatar{
+  width:80px;height:80px;border-radius:20px;margin-bottom:4px;
+  box-shadow:0 6px 24px rgba(0,0,0,0.14);overflow:hidden;
+  display:flex;align-items:center;justify-content:center}
+.prof-avatar svg{width:80px;height:80px;display:block}
+.prof-username{font-size:1.1rem;font-weight:900;color:var(--text)}
+.prof-email{font-size:.78rem;color:var(--text2);font-weight:600}
+.prof-karma{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg2);border-radius:12px;padding:8px 16px}
+.prof-karma-val{font-size:1.3rem;font-weight:900;color:var(--text)}
+.prof-karma-label{font-size:.75rem;color:var(--text2);font-weight:700}
+.prof-action{
+  display:flex;align-items:center;gap:12px;padding:14px 20px;
+  cursor:pointer;transition:background 0.15s;border:none;background:transparent;
+  width:100%;text-align:left;font-family:var(--font)}
+.prof-action:hover{background:rgba(100,80,200,.04)}
+.prof-action-ico{font-size:1.2rem;width:28px;text-align:center}
+.prof-action-label{font-size:.9rem;font-weight:700;color:var(--text)}
+.prof-action-sublabel{font-size:.72rem;color:var(--text2);font-weight:600}
+.prof-action-arrow{margin-left:auto;color:var(--text3);font-size:.9rem}
+/* Auth nudge bar */
+#auth-nudge{
+  position:absolute;bottom:calc(52px + env(safe-area-inset-bottom));
+  left:12px;right:12px;z-index:950;
+  background:linear-gradient(135deg,#3d3580,#5b8dee);color:#fff;
+  border-radius:var(--r-sm);padding:12px 16px;
+  display:flex;align-items:center;gap:12px;box-shadow:var(--shadow-lg);
+  transform:translateY(120%);transition:transform 0.4s cubic-bezier(0.34,1.2,0.64,1);
+  pointer-events:none}
+#auth-nudge.show{transform:translateY(0);pointer-events:all}
+.nudge-txt{flex:1;font-size:.82rem;font-weight:700;line-height:1.4}
+.nudge-btn{
+  padding:7px 14px;border-radius:20px;border:1.5px solid rgba(255,255,255,0.5);
+  background:rgba(255,255,255,0.15);color:#fff;font-size:.75rem;font-weight:800;
+  font-family:var(--font);white-space:nowrap;cursor:pointer;
+  transition:background 0.15s}
+.nudge-btn:hover{background:rgba(255,255,255,0.28)}
+.nudge-close{background:none;border:none;color:rgba(255,255,255,0.7);
+  font-size:1rem;cursor:pointer;padding:0 2px;line-height:1}
 /* ── Responsive ────────────────────────────────────────────────────── */
 @media(min-width:600px){
   .sheet:not(#detail-sheet){max-width:420px;left:50%;right:auto;
@@ -545,7 +667,10 @@ button{font-family:var(--font);cursor:pointer}
   <div class="hdr-spacer"></div>
   <div class="mode-badge demo" id="mode-badge"><div class="mode-dot"></div><span id="mode-text">DEMO</span></div>
   <button class="hdr-btn" id="ghost-btn" title="Ghost mode" onclick="toggleGhost()">👻</button>
-  <div class="hdr-avatar" id="hdr-avatar" title="Your avatar">🌸</div>
+  <div id="hdr-auth-area">
+    <button class="hdr-signin" id="hdr-signin-btn" onclick="openAuth()" style="display:none">Sign in</button>
+    <div class="hdr-avatar" id="hdr-avatar" title="Profile" onclick="openProfile()" style="display:none">🌸</div>
+  </div>
   <button class="hdr-btn" id="alerts-btn" title="Service Alerts" onclick="openSheet('alerts-sheet')">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M8 2a5 5 0 0 0-5 5v3l-1 1.5h12L13 10V7a5 5 0 0 0-5-5z"/>
@@ -1127,59 +1252,67 @@ const VB = {train:{w:80,h:36},vline:{w:80,h:36},tram:{w:72,h:40},bus:{w:68,h:44}
 // Official PTV tram green and bus amber — trains use v.color from ROUTES
 const MODE_COLOR = {tram:'#2CA05A',bus:'#F5A623'};
 
-// makeFaceSVG — top-down sprite view, all 48×48 viewBox, sz = rendered px size
-function makeFaceSVG(mode, delayed, color, sz){
+// makeFaceSVG — anime/Tamagotchi style, 64×64 viewBox, sz = rendered px size
+function makeFaceSVG(mode, delayed, color, sz, label){
   const c = color||'#5b8dee';
-  // Pupil color: darkened version of body color
-  const pupil = 'rgba(0,0,0,0.65)';
+  const safeLabel = label ? String(label).replace(/[<>&"]/g,'').slice(0,6) : '';
 
-  // ── Shared expressions ──
-  const happyMouth = `<path d="M17 33 Q24 38 31 33" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
-  const sadMouth   = `<path d="M17 36 Q24 31 31 36" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
-  const sadBrows   = `<line x1="13" y1="19" x2="20" y2="22" stroke="white" stroke-width="1.8" stroke-linecap="round" opacity="0.85"/>
-    <line x1="35" y1="19" x2="28" y2="22" stroke="white" stroke-width="1.8" stroke-linecap="round" opacity="0.85"/>`;
-  const eyes = `<circle cx="17" cy="25" r="5" fill="white" opacity="0.95"/>
-    <circle cx="31" cy="25" r="5" fill="white" opacity="0.95"/>
-    <circle cx="17" cy="25" r="3" fill="${pupil}"/>
-    <circle cx="31" cy="25" r="3" fill="${pupil}"/>
-    <circle cx="15.5" cy="23.5" r="1.1" fill="white" opacity="0.7"/>
-    <circle cx="29.5" cy="23.5" r="1.1" fill="white" opacity="0.7"/>`;
-  const mouth = delayed ? sadMouth : happyMouth;
-  const brows = delayed ? sadBrows : '';
+  function makeEyes(ey){
+    return `<circle cx="21" cy="${ey}" r="10" fill="white"/>
+    <circle cx="43" cy="${ey}" r="10" fill="white"/>
+    <circle cx="21" cy="${ey}" r="6" fill="#1a1a2e"/>
+    <circle cx="43" cy="${ey}" r="6" fill="#1a1a2e"/>
+    <circle cx="18.5" cy="${ey-3}" r="2.5" fill="white"/>
+    <circle cx="40.5" cy="${ey-3}" r="2.5" fill="white"/>`;
+  }
+  function makeMouth(my){
+    return delayed
+      ? `<path d="M22 ${my+5} Q32 ${my-1} 42 ${my+5}" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round"/>`
+      : `<path d="M22 ${my} Q32 ${my+7} 42 ${my}" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+  }
+  function makeBrows(ey){
+    if(!delayed) return '';
+    return `<line x1="13" y1="${ey-13}" x2="22" y2="${ey-10}" stroke="white" stroke-width="2.2" stroke-linecap="round" opacity="0.9"/>
+    <line x1="51" y1="${ey-13}" x2="42" y2="${ey-10}" stroke="white" stroke-width="2.2" stroke-linecap="round" opacity="0.9"/>`;
+  }
 
-  // ── TRAM – top-down, green, pantograph dot + roof panel lines ──
+  const base = `<rect x="0" y="0" width="64" height="64" rx="16" fill="white"/>
+    <rect x="3" y="3" width="58" height="58" rx="13" fill="${c}"/>`;
+
+  // ── TRAM – green, cream stripe lower body, pantograph bumps top ──
   if(mode==='tram'){
-    return `<svg width="${sz}" height="${sz}" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1" y="1" width="46" height="46" rx="13" fill="white"/>
-      <rect x="4" y="4" width="40" height="40" rx="11" fill="${c}"/>
-      <line x1="4" y1="16" x2="44" y2="16" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
-      <line x1="4" y1="32" x2="44" y2="32" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
-      <circle cx="24" cy="9" r="3" fill="white" opacity="0.55"/>
-      <circle cx="24" cy="9" r="1.5" fill="white" opacity="0.9"/>
-      ${brows}${eyes}${mouth}
+    const ey=32;
+    return `<svg width="${sz}" height="${sz}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      ${base}
+      <rect x="18" y="3" width="10" height="6" rx="3" fill="rgba(255,255,255,0.7)"/>
+      <rect x="36" y="3" width="10" height="6" rx="3" fill="rgba(255,255,255,0.7)"/>
+      <rect x="3" y="45" width="58" height="16" rx="0" fill="rgba(255,248,200,0.42)"/>
+      ${makeBrows(ey)}${makeEyes(ey)}${makeMouth(50)}
     </svg>`;
   }
 
-  // ── TRAIN – top-down, line color, carriage coupling dots ──
+  // ── TRAIN – line color, window strip top, vent circles ──
   if(mode==='train'||mode==='vline'){
-    return `<svg width="${sz}" height="${sz}" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1" y="1" width="46" height="46" rx="11" fill="white"/>
-      <rect x="4" y="4" width="40" height="40" rx="9" fill="${c}"/>
-      <line x1="4" y1="16" x2="44" y2="16" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
-      <line x1="4" y1="32" x2="44" y2="32" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
-      <rect x="19" y="4" width="10" height="4" rx="2" fill="rgba(255,255,255,0.35)"/>
-      <rect x="19" y="40" width="10" height="4" rx="2" fill="rgba(255,255,255,0.35)"/>
-      ${brows}${eyes}${mouth}
+    const ey=34;
+    return `<svg width="${sz}" height="${sz}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      ${base}
+      <rect x="3" y="3" width="58" height="14" rx="13" fill="rgba(0,0,0,0.12)"/>
+      <circle cx="18" cy="10" r="4.5" fill="rgba(0,0,0,0.18)"/>
+      <circle cx="46" cy="10" r="4.5" fill="rgba(0,0,0,0.18)"/>
+      ${makeBrows(ey)}${makeEyes(ey)}${makeMouth(52)}
     </svg>`;
   }
 
-  // ── BUS – top-down, amber, dest board strip at top ──
-  return `<svg width="${sz}" height="${sz}" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-    <rect x="1" y="1" width="46" height="46" rx="11" fill="white"/>
-    <rect x="4" y="4" width="40" height="40" rx="9" fill="${c}"/>
-    <rect x="6" y="6" width="36" height="7" rx="4" fill="rgba(0,0,0,0.2)"/>
-    <line x1="4" y1="32" x2="44" y2="32" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
-    ${brows}${eyes}${mouth}
+  // ── BUS – amber, white windscreen lower half with route number ──
+  const ey=27;
+  const lbl = safeLabel
+    ? `<text x="32" y="57" text-anchor="middle" font-family="Nunito,sans-serif" font-weight="900" font-size="9" fill="${c}">${safeLabel}</text>`
+    : '';
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+    ${base}
+    <rect x="8" y="42" width="48" height="19" rx="7" fill="rgba(255,255,255,0.88)"/>
+    ${lbl}
+    ${makeBrows(ey)}${makeEyes(ey)}${makeMouth(38)}
   </svg>`;
 }
 
@@ -1201,12 +1334,15 @@ function makeInspectorSVG(){
 }
 
 // ── makeIcon ───────────────────────────────────────────────────────────
-// Returns SVG HEIGHT in px; 0 = dot mode (zoom ≤12)
+// Returns sprite size in px; 0 = dot mode (zoom ≤11)
 function getIconSz(){
-  const z = map.getZoom ? map.getZoom() : 13;
-  const h = {18:56,17:44,16:36,15:28,14:22,13:18}[z];
-  if(h) return h;
-  return z > 18 ? 56 : 0; // 0 = dot mode
+  const z = map.getZoom ? map.getZoom() : 14;
+  if(z >= 16) return 64;
+  if(z === 15) return 50;
+  if(z === 14) return 38;
+  if(z === 13) return 28;
+  if(z === 12) return 20;
+  return 0; // dot mode
 }
 
 function makeIcon(v){
@@ -1230,7 +1366,7 @@ function makeIcon(v){
   }
 
   const pad=6; const sq=sz+pad;
-  const svg=makeFaceSVG(v.mode,delayed,color,sz);
+  const svg=makeFaceSVG(v.mode,delayed,color,sz,v.label);
   return L.divIcon({
     className:'',
     iconSize:[sq,sq],
@@ -1355,7 +1491,7 @@ function openDetail(v){
   // Big face SVG in detail hero
   const faceEl=document.getElementById('dp-face');
   const dpColor=MODE_COLOR[v.mode]||v.color||'#5b8dee';
-  faceEl.innerHTML=makeFaceSVG(v.mode,delayed,dpColor,78);
+  faceEl.innerHTML=makeFaceSVG(v.mode,delayed,dpColor,80,v.label);
   faceEl.style.background='transparent';
   faceEl.style.boxShadow=`0 6px 24px ${dpColor}44`;
   document.getElementById('dp-route').textContent=v.label;
@@ -1760,7 +1896,465 @@ async function init(){
   if(!localStorage.getItem('tl-onboarded')) setTimeout(showOnboarding,800);
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// ── AUTH SYSTEM ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+
+let currentUser = null; // { email, username, karma, avatar }
+
+// ── Avatar SVG renderer ─────────────────────────────────────────────────
+const AV_FACES    = ['#FFCBA4','#F5A27A','#E8956D','#C68642','#8D5524','#FADDE1'];
+const AV_HAIRS    = ['#1a1a1a','#5C3317','#8B4513','#D4A017','#F4E04D','#E0E0E0','#D44BC1','#4169E1'];
+const AV_OUTFITS  = ['#5b8dee','#2CA05A','#F5A623','#ff6b6b','#9b7fd4','#4ecdc4'];
+const AV_HAIR_STYLES = ['none','short','long','curly'];
+const AV_EYES     = ['normal','happy','star'];
+const AV_MOUTHS   = ['smile','grin','neutral'];
+const AV_ACCS     = ['none','glasses','hat','headband'];
+
+const AV_DEFAULTS = {
+  face:'#FFCBA4', hairColor:'#1a1a1a', hair:'short',
+  eyes:'normal', mouth:'smile', accessory:'none', outfit:'#5b8dee'
+};
+
+function renderAvatarSVG(cfg, sz=48){
+  const fc = cfg.face     || AV_DEFAULTS.face;
+  const hc = cfg.hairColor|| AV_DEFAULTS.hairColor;
+  const oc = cfg.outfit   || AV_DEFAULTS.outfit;
+
+  let hairSvg = '';
+  switch(cfg.hair||'short'){
+    case 'short':
+      hairSvg = `<rect x="9" y="7" width="30" height="15" rx="8" fill="${hc}"/>`;
+      break;
+    case 'long':
+      hairSvg = `<rect x="9" y="7" width="30" height="12" rx="8" fill="${hc}"/>
+      <rect x="7" y="17" width="7" height="22" rx="4" fill="${hc}"/>
+      <rect x="34" y="17" width="7" height="22" rx="4" fill="${hc}"/>`;
+      break;
+    case 'curly':
+      hairSvg = `<circle cx="24" cy="9" r="8" fill="${hc}"/>
+      <circle cx="14" cy="13" r="5.5" fill="${hc}"/>
+      <circle cx="34" cy="13" r="5.5" fill="${hc}"/>`;
+      break;
+    default: hairSvg = '';
+  }
+
+  let eyesSvg = '';
+  switch(cfg.eyes||'normal'){
+    case 'happy':
+      eyesSvg = `<path d="M14 23 Q18 19 22 23" stroke="#1a1a2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M26 23 Q30 19 34 23" stroke="#1a1a2e" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+      break;
+    case 'star':
+      eyesSvg = `<text x="18" y="27" text-anchor="middle" font-size="8" fill="#1a1a2e">★</text>
+      <text x="30" y="27" text-anchor="middle" font-size="8" fill="#1a1a2e">★</text>`;
+      break;
+    default:
+      eyesSvg = `<circle cx="18" cy="24" r="5" fill="white"/>
+      <circle cx="30" cy="24" r="5" fill="white"/>
+      <circle cx="18" cy="24" r="3" fill="#1a1a2e"/>
+      <circle cx="30" cy="24" r="3" fill="#1a1a2e"/>
+      <circle cx="16.5" cy="22.5" r="1.5" fill="white"/>
+      <circle cx="28.5" cy="22.5" r="1.5" fill="white"/>`;
+  }
+
+  let mouthSvg = '';
+  switch(cfg.mouth||'smile'){
+    case 'grin':
+      mouthSvg = `<path d="M16 32 Q24 39 32 32" stroke="#c06040" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <rect x="18" y="33" width="12" height="3.5" rx="1" fill="white"/>`;
+      break;
+    case 'neutral':
+      mouthSvg = `<line x1="18" y1="33" x2="30" y2="33" stroke="#c06040" stroke-width="2.2" stroke-linecap="round"/>`;
+      break;
+    default:
+      mouthSvg = `<path d="M17 31 Q24 37 31 31" stroke="#c06040" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  }
+
+  let accSvg = '';
+  switch(cfg.accessory||'none'){
+    case 'glasses':
+      accSvg = `<circle cx="18" cy="24" r="6.5" fill="none" stroke="rgba(40,40,40,0.75)" stroke-width="1.5"/>
+      <circle cx="30" cy="24" r="6.5" fill="none" stroke="rgba(40,40,40,0.75)" stroke-width="1.5"/>
+      <line x1="24.5" y1="24" x2="23.5" y2="24" stroke="rgba(40,40,40,0.75)" stroke-width="1.5"/>
+      <line x1="10" y1="22" x2="11.5" y2="22" stroke="rgba(40,40,40,0.75)" stroke-width="1.5"/>
+      <line x1="38" y1="22" x2="36.5" y2="22" stroke="rgba(40,40,40,0.75)" stroke-width="1.5"/>`;
+      break;
+    case 'hat':
+      accSvg = `<rect x="10" y="10" width="28" height="4" rx="2" fill="${oc}"/>
+      <rect x="15" y="4" width="18" height="8" rx="4" fill="${oc}"/>`;
+      break;
+    case 'headband':
+      accSvg = `<rect x="8" y="15" width="32" height="5" rx="2.5" fill="${oc}" opacity="0.85"/>`;
+      break;
+    case 'bow':
+      accSvg = `<polygon points="20,8 24,13 20,18" fill="${oc}"/>
+      <polygon points="28,8 24,13 28,18" fill="${oc}"/>
+      <circle cx="24" cy="13" r="2.5" fill="${oc}"/>`;
+      break;
+  }
+
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+    <rect width="48" height="48" rx="12" fill="${oc}"/>
+    ${hairSvg}
+    <circle cx="24" cy="27" r="18" fill="${fc}"/>
+    ${eyesSvg}${mouthSvg}${accSvg}
+  </svg>`;
+}
+
+// ── Auth state ──────────────────────────────────────────────────────────
+function getAuthToken(){ return localStorage.getItem('tl-auth-token'); }
+function setAuthToken(t){ localStorage.setItem('tl-auth-token', t); }
+function clearAuthToken(){ localStorage.removeItem('tl-auth-token'); }
+
+function updateHeaderAuth(){
+  const signinBtn = document.getElementById('hdr-signin-btn');
+  const avatarEl  = document.getElementById('hdr-avatar');
+  if(currentUser){
+    signinBtn.style.display = 'none';
+    avatarEl.style.display  = 'flex';
+    // Show SVG avatar or emoji fallback
+    const cfg = currentUser.avatar || AV_DEFAULTS;
+    avatarEl.innerHTML = renderAvatarSVG(cfg, 36);
+    avatarEl.style.background = 'transparent';
+    avatarEl.style.padding    = '0';
+    avatarEl.style.border     = 'none';
+    avatarEl.style.width      = '36px';
+    avatarEl.style.height     = '36px';
+    avatarEl.style.borderRadius = '10px';
+    avatarEl.style.overflow   = 'hidden';
+  } else {
+    signinBtn.style.display = 'block';
+    avatarEl.style.display  = 'none';
+  }
+}
+
+async function initAuth(){
+  const token = getAuthToken();
+  if(!token){ updateHeaderAuth(); scheduleNudge(); return; }
+  try{
+    const res = await fetch('/auth/me',{headers:{Authorization:'Bearer '+token}});
+    if(res.ok){
+      currentUser = await res.json();
+    } else {
+      clearAuthToken();
+    }
+  } catch(e){ /* network error, keep token for retry */ }
+  updateHeaderAuth();
+}
+
+// ── Auth modal ──────────────────────────────────────────────────────────
+function openAuth(){
+  authShowEmailStep();
+  document.getElementById('auth-overlay').classList.add('show');
+  dismissNudge();
+}
+function closeAuth(){
+  document.getElementById('auth-overlay').classList.remove('show');
+}
+function authShowEmailStep(){
+  document.getElementById('auth-step-email').style.display='';
+  document.getElementById('auth-step-otp').style.display='none';
+  document.getElementById('auth-err').textContent='';
+}
+function authShowOtpStep(email){
+  document.getElementById('auth-step-email').style.display='none';
+  document.getElementById('auth-step-otp').style.display='';
+  document.getElementById('auth-otp-sub').textContent=`Enter the 6-digit code sent to ${email}`;
+  document.getElementById('auth-otp-err').textContent='';
+  buildOtpInputs();
+}
+
+function buildOtpInputs(){
+  const row = document.getElementById('otp-row');
+  row.innerHTML='';
+  for(let i=0;i<6;i++){
+    const inp = document.createElement('input');
+    inp.type='text'; inp.inputMode='numeric'; inp.maxLength=1;
+    inp.className='otp-digit'; inp.id=`otp-${i}`;
+    inp.addEventListener('input', e=>{
+      const v = e.target.value.replace(/\D/g,'');
+      e.target.value = v.slice(-1);
+      if(v && i<5) document.getElementById(`otp-${i+1}`)?.focus();
+    });
+    inp.addEventListener('keydown', e=>{
+      if(e.key==='Backspace'&&!inp.value&&i>0) document.getElementById(`otp-${i-1}`)?.focus();
+    });
+    inp.addEventListener('paste', e=>{
+      e.preventDefault();
+      const paste = (e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
+      [...paste].forEach((ch,j)=>{
+        const el = document.getElementById(`otp-${j}`);
+        if(el) el.value=ch;
+      });
+      document.getElementById(`otp-${Math.min(paste.length,5)}`)?.focus();
+    });
+    row.appendChild(inp);
+  }
+  setTimeout(()=>document.getElementById('otp-0')?.focus(),100);
+}
+
+function getOtpValue(){
+  return Array.from({length:6},(_,i)=>document.getElementById(`otp-${i}`)?.value||'').join('');
+}
+
+let _authEmail='';
+async function authSendOtp(){
+  const emailEl = document.getElementById('auth-email-input');
+  const email   = emailEl.value.trim();
+  const errEl   = document.getElementById('auth-err');
+  if(!email||!email.includes('@')){ errEl.textContent='Please enter a valid email address'; return; }
+  errEl.textContent='';
+  const btn = document.getElementById('auth-send-btn');
+  btn.disabled=true; btn.textContent='Sending…';
+  try{
+    const res  = await fetch('/auth/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+    const data = await res.json();
+    if(!res.ok){ errEl.textContent=data.error||'Failed to send code'; btn.disabled=false; btn.textContent='Send code 📨'; return; }
+    _authEmail = email;
+    // Dev mode: auto-fill OTP
+    authShowOtpStep(email);
+    if(data.dev_code){
+      setTimeout(()=>{
+        [...data.dev_code].forEach((ch,i)=>{const el=document.getElementById(`otp-${i}`);if(el)el.value=ch;});
+        showToast('Dev mode: code auto-filled');
+      },400);
+    }
+  } catch(e){ errEl.textContent='Network error. Try again.'; }
+  btn.disabled=false; btn.textContent='Send code 📨';
+}
+
+async function authVerifyOtp(){
+  const code   = getOtpValue();
+  const errEl  = document.getElementById('auth-otp-err');
+  if(code.length<6){ errEl.textContent='Enter all 6 digits'; return; }
+  errEl.textContent='';
+  const btn = document.getElementById('auth-verify-btn');
+  btn.disabled=true; btn.textContent='Verifying…';
+  try{
+    const res  = await fetch('/auth/verify-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:_authEmail,code})});
+    const data = await res.json();
+    if(!res.ok){ errEl.textContent=data.error||'Invalid code'; btn.disabled=false; btn.textContent='Verify ✓'; return; }
+    setAuthToken(data.token);
+    currentUser = data.user;
+    updateHeaderAuth();
+    closeAuth();
+    showToast(`Welcome, ${data.user.username}! 🎉`);
+    // Open avatar creator on first login (no avatar set)
+    if(!data.user.avatar) setTimeout(()=>openSheet('avatar-sheet'),600);
+  } catch(e){ errEl.textContent='Network error. Try again.'; }
+  btn.disabled=false; btn.textContent='Verify ✓';
+}
+
+function openProfile(){
+  if(!currentUser){ openAuth(); return; }
+  const cfg = currentUser.avatar || AV_DEFAULTS;
+  document.getElementById('prof-avatar-display').innerHTML = renderAvatarSVG(cfg, 80);
+  document.getElementById('prof-username').textContent     = currentUser.username || '—';
+  document.getElementById('prof-email-disp').textContent   = currentUser.email    || '—';
+  document.getElementById('prof-karma').textContent        = currentUser.karma    || 0;
+  openSheet('profile-sheet');
+}
+
+function authSignOut(){
+  clearAuthToken();
+  currentUser = null;
+  updateHeaderAuth();
+  closeSheet('profile-sheet');
+  showToast('Signed out 👋');
+  scheduleNudge(60000);
+}
+
+// ── Avatar creator ──────────────────────────────────────────────────────
+let avCfg = {...AV_DEFAULTS};
+
+function buildAvatarCreator(){
+  function makeSwatches(containerId, colors, cfgKey){
+    const el = document.getElementById(containerId);
+    if(!el) return;
+    el.innerHTML = colors.map((col,i)=>`<button class="av-swatch${avCfg[cfgKey]===col?' sel':''}" style="background:${col}" title="${col}" onclick="avSet('${cfgKey}','${col}')"></button>`).join('');
+  }
+  function makeOpts(containerId, options, cfgKey, labels){
+    const el = document.getElementById(containerId);
+    if(!el) return;
+    el.innerHTML = options.map((o,i)=>`<button class="av-opt${avCfg[cfgKey]===o?' sel':''}" onclick="avSet('${cfgKey}','${o}')">${labels?labels[i]:o}</button>`).join('');
+  }
+  makeSwatches('av-face-swatches',    AV_FACES,   'face');
+  makeSwatches('av-hair-color-swatches', AV_HAIRS,'hairColor');
+  makeSwatches('av-outfit-swatches',  AV_OUTFITS, 'outfit');
+  makeOpts('av-hair-opts',  AV_HAIR_STYLES, 'hair',  ['None 🥚','Short','Long','Curly']);
+  makeOpts('av-eyes-opts',  AV_EYES,        'eyes',  ['Normal 👀','Happy ^-^','Stars ✦']);
+  makeOpts('av-mouth-opts', AV_MOUTHS,      'mouth', ['Smile :)','Grin :D','Neutral :|']);
+  makeOpts('av-acc-opts',   AV_ACCS,        'accessory',['None','Glasses 👓','Hat 🎩','Headband']);
+  renderAvPreview();
+}
+
+function avSet(key, val){
+  avCfg[key] = val;
+  buildAvatarCreator();
+}
+
+function renderAvPreview(){
+  const el = document.getElementById('av-preview');
+  if(el) el.innerHTML = renderAvatarSVG(avCfg, 96);
+}
+
+async function saveAvatar(){
+  if(!currentUser){ showToast('Sign in first'); return; }
+  const token = getAuthToken();
+  try{
+    const res = await fetch('/auth/update-avatar',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify({avatar:avCfg})
+    });
+    if(res.ok){
+      currentUser.avatar = {...avCfg};
+      updateHeaderAuth();
+      closeSheet('avatar-sheet');
+      showToast('Avatar saved! 🎨');
+    }
+  } catch(e){ showToast('Save failed — try again'); }
+}
+
+// Load user's existing avatar into the creator when sheet opens
+document.addEventListener('DOMContentLoaded',()=>{
+  const origOpen = window.openSheet;
+  window.openSheet = function(id){
+    if(id==='avatar-sheet'){
+      avCfg = currentUser?.avatar ? {...currentUser.avatar} : {...AV_DEFAULTS};
+      buildAvatarCreator();
+    }
+    if(id==='profile-sheet'&&currentUser) openProfile();
+    origOpen(id);
+  };
+});
+
+// ── Auth nudge ──────────────────────────────────────────────────────────
+let _nudgeTimer = null;
+function scheduleNudge(delay=30000){
+  clearTimeout(_nudgeTimer);
+  if(currentUser) return;
+  if(localStorage.getItem('tl-nudge-dismissed')) return;
+  _nudgeTimer = setTimeout(()=>{
+    if(!currentUser) document.getElementById('auth-nudge').classList.add('show');
+  }, delay);
+}
+function dismissNudge(){
+  document.getElementById('auth-nudge').classList.remove('show');
+  localStorage.setItem('tl-nudge-dismissed','1');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ── END AUTH ────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+
 init();
+initAuth();
 </script>
+
+<!-- Auth overlay -->
+<div id="auth-overlay">
+  <div class="auth-card">
+    <!-- Step 1: Email -->
+    <div id="auth-step-email">
+      <span class="auth-illo">🚆</span>
+      <div class="auth-title">Sign in to Transit-Live</div>
+      <div class="auth-sub">Track your reports, earn karma, and customise your avatar</div>
+      <input class="auth-input" id="auth-email-input" type="email" placeholder="your@email.com" autocomplete="email" inputmode="email"/>
+      <div class="auth-err" id="auth-err"></div>
+      <button class="auth-btn" id="auth-send-btn" onclick="authSendOtp()">Send code 📨</button>
+      <button class="auth-skip" onclick="closeAuth()">Skip for now</button>
+    </div>
+    <!-- Step 2: OTP -->
+    <div id="auth-step-otp" style="display:none">
+      <span class="auth-illo">📬</span>
+      <div class="auth-title">Check your inbox</div>
+      <div class="auth-sub" id="auth-otp-sub">Enter the 6-digit code we sent</div>
+      <div class="otp-row" id="otp-row"></div>
+      <div class="auth-err" id="auth-otp-err"></div>
+      <button class="auth-btn" id="auth-verify-btn" onclick="authVerifyOtp()">Verify ✓</button>
+      <button class="auth-skip" onclick="authShowEmailStep()">← Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- Auth nudge -->
+<div id="auth-nudge">
+  <div class="nudge-txt">🌟 Sign in to earn karma and save your reports</div>
+  <button class="nudge-btn" onclick="openAuth()">Sign in</button>
+  <button class="nudge-close" onclick="dismissNudge()">✕</button>
+</div>
+
+<!-- Profile sheet -->
+<div class="sheet" id="profile-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <div class="sheet-title">Your Profile</div>
+    <button class="sheet-close" onclick="closeSheet('profile-sheet')">✕</button>
+  </div>
+  <div class="sheet-body">
+    <div class="prof-hero" id="prof-hero">
+      <div class="prof-avatar" id="prof-avatar-display"></div>
+      <div class="prof-username" id="prof-username">—</div>
+      <div class="prof-email" id="prof-email-disp">—</div>
+      <div class="prof-karma"><span class="prof-karma-val" id="prof-karma">0</span><span class="prof-karma-label">karma points</span></div>
+    </div>
+    <button class="prof-action" onclick="closeSheet('profile-sheet');openSheet('avatar-sheet')">
+      <span class="prof-action-ico">🎨</span>
+      <div><div class="prof-action-label">Edit Avatar</div><div class="prof-action-sublabel">Customise your look</div></div>
+      <span class="prof-action-arrow">›</span>
+    </button>
+    <button class="prof-action" id="prof-signout-btn" onclick="authSignOut()">
+      <span class="prof-action-ico">👋</span>
+      <div><div class="prof-action-label">Sign Out</div><div class="prof-action-sublabel">You'll remain anonymous</div></div>
+      <span class="prof-action-arrow">›</span>
+    </button>
+  </div>
+</div>
+
+<!-- Avatar creator sheet -->
+<div class="sheet" id="avatar-sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <div class="sheet-title">🎨 Create Avatar</div>
+    <button class="sheet-close" onclick="closeSheet('avatar-sheet')">✕</button>
+  </div>
+  <div class="sheet-body" id="avatar-sheet-body">
+    <div style="display:flex;justify-content:center;padding:16px 0 4px">
+      <div class="av-preview" id="av-preview"></div>
+    </div>
+    <div class="av-section">
+      <div class="av-section-label">Skin tone</div>
+      <div class="av-swatch-row" id="av-face-swatches"></div>
+    </div>
+    <div class="av-section">
+      <div class="av-section-label">Hair</div>
+      <div class="av-opt-row" id="av-hair-opts"></div>
+    </div>
+    <div class="av-section">
+      <div class="av-section-label">Hair colour</div>
+      <div class="av-swatch-row" id="av-hair-color-swatches"></div>
+    </div>
+    <div class="av-section">
+      <div class="av-section-label">Eyes</div>
+      <div class="av-opt-row" id="av-eyes-opts"></div>
+    </div>
+    <div class="av-section">
+      <div class="av-section-label">Mouth</div>
+      <div class="av-opt-row" id="av-mouth-opts"></div>
+    </div>
+    <div class="av-section">
+      <div class="av-section-label">Accessory</div>
+      <div class="av-opt-row" id="av-acc-opts"></div>
+    </div>
+    <div class="av-section">
+      <div class="av-section-label">Outfit colour</div>
+      <div class="av-swatch-row" id="av-outfit-swatches"></div>
+    </div>
+    <button class="av-save" onclick="saveAvatar()">Save Avatar ✓</button>
+    <div style="height:12px"></div>
+  </div>
+</div>
 </body>
 </html>
