@@ -127,6 +127,52 @@ button{font-family:var(--font);cursor:pointer}
 .jb-close{background:rgba(255,255,255,.18);border:none;color:#fff;
   font-size:.85rem;border-radius:20px;padding:5px 10px;font-family:var(--font);
   font-weight:700;cursor:pointer}
+/* Journey cards */
+#journey-cards{
+  position:absolute;
+  bottom:calc(52px + env(safe-area-inset-bottom));
+  left:12px;right:12px;z-index:950;
+  display:none}
+#journey-cards.show{display:block}
+.jc-header{display:flex;align-items:center;justify-content:space-between;padding:0 2px 7px}
+.jc-title{font-size:.8rem;font-weight:800;color:var(--text2)}
+.jc-close-btn{background:none;border:none;color:var(--text3);font-size:.8rem;cursor:pointer;
+  padding:3px 6px;font-family:var(--font);font-weight:700}
+.jc-viewport{overflow:hidden;border-radius:20px}
+.jc-track{display:flex;transition:transform 0.38s cubic-bezier(0.34,1.1,0.64,1);will-change:transform}
+.jc-card{
+  flex:0 0 100%;min-width:0;
+  background:var(--panel);border-radius:20px;padding:13px 14px 11px;
+  box-shadow:0 6px 28px rgba(61,53,128,.18);border:1.5px solid var(--border);
+  display:flex;flex-direction:column;gap:9px}
+.jc-top{display:flex;align-items:center;gap:11px}
+.jc-face{width:52px;height:52px;border-radius:14px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.jc-face svg{display:block}
+.jc-info{flex:1;min-width:0}
+.jc-route{font-size:.95rem;font-weight:900;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jc-linename{font-size:.7rem;color:var(--text2);font-weight:600;margin-top:2px}
+.jc-badges{display:flex;gap:5px;flex-wrap:wrap}
+.jc-badge{font-size:.68rem;font-weight:700;padding:4px 9px;border-radius:20px;display:flex;align-items:center;gap:3px;white-space:nowrap}
+.jc-badge.walk{background:rgba(78,205,196,.12);color:#28a0a0}
+.jc-badge.arr{background:rgba(107,203,119,.12);color:#3a9a50}
+.jc-badge.dur{background:rgba(91,141,238,.12);color:var(--blue)}
+.jc-minimap{border-radius:10px;overflow:hidden;background:rgba(100,80,200,.06);width:100%;height:50px}
+.jc-minimap svg{display:block;width:100%;height:50px}
+.jc-go{
+  width:100%;padding:11px;border-radius:12px;border:none;
+  background:linear-gradient(135deg,var(--mint),var(--blue));
+  color:#fff;font-size:.92rem;font-weight:800;font-family:var(--font);
+  box-shadow:0 4px 14px rgba(91,141,238,.35);transition:transform 0.15s}
+.jc-go:hover{transform:translateY(-1px)}
+.jc-nav{display:flex;align-items:center;justify-content:space-between;padding:7px 2px 0}
+.jc-dots{display:flex;gap:5px}
+.jc-dot{width:7px;height:7px;border-radius:50%;background:var(--border2);transition:background 0.2s}
+.jc-dot.active{background:var(--blue)}
+.jc-arr{background:var(--panel);border:1.5px solid var(--border2);border-radius:20px;
+  padding:4px 11px;font-size:.72rem;font-weight:700;color:var(--text2);
+  cursor:pointer;transition:all 0.15s;font-family:var(--font)}
+.jc-arr:hover{border-color:var(--blue);color:var(--blue)}
+.jc-arr:disabled{opacity:.3;cursor:default;pointer-events:none}
 /* Journey vehicle highlight */
 .vm-wrap.journey-hl .vm-inner{
   filter:drop-shadow(0 0 10px rgba(91,141,238,.9)) drop-shadow(0 0 20px rgba(91,141,238,.5)) !important;
@@ -768,7 +814,7 @@ button{font-family:var(--font);cursor:pointer}
   <button class="hdr-btn" id="ghost-btn" title="Ghost mode" onclick="toggleGhost()">👻</button>
   <div id="hdr-auth-area">
     <button class="hdr-signin" id="hdr-signin-btn" onclick="openAuth()" style="display:none">Sign in</button>
-    <div class="hdr-avatar" id="hdr-avatar" title="Profile" onclick="openProfile()" style="display:none">🌸</div>
+    <div class="hdr-avatar" id="hdr-avatar" title="Fly to me" onclick="flyToUser()" style="display:none">🌸</div>
   </div>
   <button class="hdr-btn" id="alerts-btn" title="Service Alerts" onclick="openSheet('alerts-sheet')">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -802,6 +848,22 @@ button{font-family:var(--font);cursor:pointer}
     <div class="jb-sub" id="jb-sub">Finding vehicles heading your way…</div>
   </div>
   <button class="jb-close" onclick="clearDestination()">✕ Clear</button>
+</div>
+
+<!-- Journey cards (swipeable vehicle options) -->
+<div id="journey-cards">
+  <div class="jc-header">
+    <div class="jc-title">🗺️ Getting there...</div>
+    <button class="jc-close-btn" onclick="clearDestination()">✕ Clear</button>
+  </div>
+  <div class="jc-viewport" id="jc-viewport">
+    <div class="jc-track" id="jc-track"></div>
+  </div>
+  <div class="jc-nav">
+    <button class="jc-arr" id="jc-prev" onclick="jcSwipe(-1)">← Prev</button>
+    <div class="jc-dots" id="jc-dots"></div>
+    <button class="jc-arr" id="jc-next" onclick="jcSwipe(1)">Next →</button>
+  </div>
 </div>
 
 <!-- Follow bar -->
@@ -1006,6 +1068,23 @@ const STATIONS=[
 
 // ── Avatar / Session ───────────────────────────────────────────────────
 const AVATAR_EMOJIS = ['🌸','⭐','🌙','🌊','🍄','🌿','🦋','✨','🎀','🍀','🎵','🌈','🍭','🦊','🐨'];
+const TRAIN_ABBREVS = {
+  'Belgrave':'BV','Glen Waverley':'GW','Lilydale':'LY','Alamein':'AM',
+  'Frankston':'FK','Cranbourne':'CR','Pakenham':'PK','Sandringham':'SN',
+  'Werribee':'WB','Williamstown':'WT','Sunbury':'SB','Craigieburn':'CG',
+  'Upfield':'UF','Mernda':'MR','Hurstbridge':'HB'
+};
+function getRouteLabel(v){
+  if(!v) return '';
+  if(v.mode==='bus') return String(v.label||'').replace(/^Bus\s*/i,'').slice(0,5);
+  if(v.mode==='tram') return String(v.label||'').replace(/^Tram\s*/i,'').slice(0,4);
+  if(v.mode==='train'||v.mode==='vline'){
+    const abbr=TRAIN_ABBREVS[v.line];
+    if(abbr) return abbr;
+    return String(v.line||'').slice(0,2).toUpperCase();
+  }
+  return '';
+}
 const AVATAR_COLORS = ['#ff6b6b','#ffd166','#06d6a0','#118ab2','#9b5de5','#f15bb5','#00bbf9','#ffb347','#4ecdc4','#ff8fab'];
 let sessionAvatar = null;
 let ghostMode = false;
@@ -1235,6 +1314,12 @@ function startLocationWatch(){
   },{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
 }
 
+function flyToUser(){
+  if(!userLoc){ showToast('📍 Location not found yet'); return; }
+  map.flyTo([userLoc.lat, userLoc.lng], 16, {duration:1.0});
+  showToast('Found you! 📍');
+}
+
 function updateNearestVehicle(){
   const nearEl=document.getElementById('sb-nearest');
   if(!nearEl) return;
@@ -1430,24 +1515,31 @@ function makeFaceSVG(mode, delayed, color, sz, label){
   // ── TRAM – green, cream stripe lower body, pantograph bumps top ──
   if(mode==='tram'){
     const ey=32;
+    const lbl = safeLabel
+      ? `<text x="32" y="57" text-anchor="middle" font-family="Nunito,sans-serif" font-weight="900" font-size="10" fill="rgba(0,0,0,0.65)">${safeLabel}</text>`
+      : '';
     return `<svg width="${sz}" height="${sz}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
       ${base}
       <rect x="18" y="3" width="10" height="6" rx="3" fill="rgba(255,255,255,0.7)"/>
       <rect x="36" y="3" width="10" height="6" rx="3" fill="rgba(255,255,255,0.7)"/>
       <rect x="3" y="45" width="58" height="16" rx="0" fill="rgba(255,248,200,0.42)"/>
-      ${makeBrows(ey)}${makeEyes(ey)}${makeMouth(50)}
+      ${makeBrows(ey)}${makeEyes(ey)}${makeMouth(50)}${lbl}
     </svg>`;
   }
 
   // ── TRAIN – line color, window strip top, vent circles ──
   if(mode==='train'||mode==='vline'){
     const ey=34;
+    const lbl = safeLabel
+      ? `<rect x="0" y="50" width="64" height="14" fill="rgba(0,0,0,0.22)"/>
+         <text x="32" y="60" text-anchor="middle" font-family="Nunito,sans-serif" font-weight="900" font-size="9" fill="white">${safeLabel}</text>`
+      : '';
     return `<svg width="${sz}" height="${sz}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
       ${base}
       <rect x="3" y="3" width="58" height="14" rx="13" fill="rgba(0,0,0,0.12)"/>
       <circle cx="18" cy="10" r="4.5" fill="rgba(0,0,0,0.18)"/>
       <circle cx="46" cy="10" r="4.5" fill="rgba(0,0,0,0.18)"/>
-      ${makeBrows(ey)}${makeEyes(ey)}${makeMouth(52)}
+      ${makeBrows(ey)}${makeEyes(ey)}${makeMouth(52)}${lbl}
     </svg>`;
   }
 
@@ -1515,7 +1607,8 @@ function makeIcon(v){
   }
 
   const pad=4; const sq=sz+pad;
-  const svg=makeFaceSVG(v.mode,delayed,color,sz,v.label);
+  const routeLabel = sz >= 32 ? getRouteLabel(v) : '';
+  const svg=makeFaceSVG(v.mode,delayed,color,sz,routeLabel);
   return L.divIcon({
     className:'',
     iconSize:[sq,sq],
@@ -2086,7 +2179,7 @@ function initSearch(){
 
 async function doAddrSearch(q){
   try{
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&countrycodes=au&limit=5&format=json&addressdetails=1`;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&countrycodes=au&viewbox=140.9,-39.2,150.0,-33.9&bounded=1&limit=6&format=json&addressdetails=1`;
     const res = await fetch(url, {headers:{'Accept-Language':'en'}});
     const data = await res.json();
     showAddrDropdown(data);
@@ -2097,9 +2190,15 @@ function showAddrDropdown(results){
   const dd = document.getElementById('addr-dropdown');
   if(!results.length){ dd.classList.remove('show'); dd.innerHTML=''; return; }
   dd.innerHTML = results.map((r,i)=>{
+    const addr = r.address || {};
     const parts = r.display_name.split(',');
     const main  = parts[0].trim();
-    const sub   = parts.slice(1,3).join(',').trim();
+    // Build suburb + postcode from addressdetails
+    const suburb = addr.suburb || addr.neighbourhood || addr.city_district || addr.town || addr.village || '';
+    const postcode = addr.postcode || '';
+    const state = addr.state || '';
+    const subParts = [suburb, postcode, state].filter(Boolean);
+    const sub = subParts.length ? subParts.join(', ') : parts.slice(1,3).join(',').trim();
     return `<div class="addr-result" onclick="selectAddrResult(${r.lat},${r.lon},'${escHtml(main)}','${escHtml(r.display_name)}')">
       <span class="addr-result-ico">📍</span>
       <div><div class="addr-result-main">${escHtml(main)}</div><div class="addr-result-sub">${escHtml(sub)}</div></div>
@@ -2123,8 +2222,12 @@ function selectAddrResult(lat, lng, name, fullAddr){
   document.getElementById('addr-search-input').blur();
   // Fly to location
   map.flyTo([+lat,+lng], Math.max(map.getZoom(),15), {duration:1.2});
-  // Place destination pin
+  // Place destination pin and activate journey mode directly
   placeDestPin(+lat, +lng, name, fullAddr);
+  // Set destLoc and go to journey mode immediately (skip dest-sheet)
+  destLoc = {lat:+lat, lng:+lng, name};
+  updateJourneyLine();
+  updateJourneyVehicles();
 }
 
 function placeDestPin(lat, lng, name, fullAddr){
@@ -2136,31 +2239,11 @@ function placeDestPin(lat, lng, name, fullAddr){
   </svg>`;
   const icon = L.divIcon({className:'',iconSize:[32,44],iconAnchor:[16,44],html:pinSvg});
   destMarker = L.marker([lat,lng],{icon,zIndexOffset:2000}).addTo(map);
-  destMarker.on('click', ()=>openDestSheet(lat,lng,name,fullAddr));
-  openDestSheet(lat, lng, name, fullAddr);
 }
 
 function openDestSheet(lat, lng, name, fullAddr){
-  document.getElementById('dest-sheet-title').textContent = `📍 ${name}`;
-  document.getElementById('dest-sheet-addr').textContent  = fullAddr;
-  document.getElementById('dest-nearby-stops').textContent = 'Loading…';
-  openSheet('dest-sheet');
-  // Store pending destination (activated on "Go here")
+  // Legacy: kept for compatibility, now handled by journey cards
   destLoc = {lat, lng, name};
-  // Load nearby stops async
-  fetch(`/api/stops/nearby?lat=${lat}&lng=${lng}`)
-    .then(r=>r.json())
-    .then(d=>{
-      const el = document.getElementById('dest-nearby-stops');
-      if(!el) return;
-      const stops = Array.isArray(d) ? d.slice(0,5) : [];
-      el.innerHTML = stops.length
-        ? stops.map(s=>`<div style="padding:3px 0">🚏 ${escHtml(s.name||s.stop_name||'Stop')}</div>`).join('')
-        : 'No stop data available';
-    }).catch(()=>{
-      const el = document.getElementById('dest-nearby-stops');
-      if(el) el.textContent = 'Could not load stops';
-    });
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2181,7 +2264,6 @@ function activateJourneyMode(){
   if(!destLoc) return;
   updateJourneyLine();
   updateJourneyVehicles();
-  document.getElementById('journey-bar').classList.add('show');
 }
 
 function updateJourneyLine(){
@@ -2194,41 +2276,172 @@ function updateJourneyLine(){
   }).addTo(map);
 }
 
+// ── Journey cards ───────────────────────────────────────────────────────
+let jcIndex=0, jcTotal=0, jcTouchStartX=0;
+
+function makeRouteMinimap(v){
+  const routeData=ROUTES.find(([m,l])=>l===v.line);
+  if(!routeData) return '<div class="jc-minimap"></div>';
+  const [,,color,,pts]=routeData;
+  const lats=pts.map(p=>p[0]),lngs=pts.map(p=>p[1]);
+  const minLat=Math.min(...lats),maxLat=Math.max(...lats);
+  const minLng=Math.min(...lngs),maxLng=Math.max(...lngs);
+  const W=300,H=50,pad=5;
+  const sx=(W-2*pad)/((maxLng-minLng)||0.001);
+  const sy=(H-2*pad)/((maxLat-minLat)||0.001);
+  const tx=lng=>pad+(lng-minLng)*sx;
+  const ty=lat=>H-pad-(lat-minLat)*sy;
+  const pathD=pts.map((p,i)=>`${i===0?'M':'L'}${tx(p[1]).toFixed(1)},${ty(p[0]).toFixed(1)}`).join(' ');
+  const vDot=`<circle cx="${tx(v.lng).toFixed(1)}" cy="${ty(v.lat).toFixed(1)}" r="5" fill="${color}" stroke="white" stroke-width="1.5"/>`;
+  const uDot=userLoc?`<circle cx="${tx(userLoc.lng).toFixed(1)}" cy="${ty(userLoc.lat).toFixed(1)}" r="4" fill="#ff6b6b" stroke="white" stroke-width="1.5"/>`:'';
+  const dDot=destLoc?`<circle cx="${tx(destLoc.lng).toFixed(1)}" cy="${ty(destLoc.lat).toFixed(1)}" r="4" fill="#5b8dee" stroke="white" stroke-width="1.5"/>`:'';
+  return `<div class="jc-minimap"><svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+    ${uDot}${vDot}${dDot}
+  </svg></div>`;
+}
+
+function findJourneyOptions(){
+  if(!userLoc||!destLoc) return [];
+  const bearingToDest=bearingBetween(userLoc.lat,userLoc.lng,destLoc.lat,destLoc.lng);
+  const options=[];
+  vehicles.filter(v=>passesFilter(v)&&v._live).forEach(v=>{
+    const walkDist=haversine(userLoc.lat,userLoc.lng,v.lat,v.lng);
+    const walkMin=Math.max(1,Math.round(walkDist/80));
+    const routeData=ROUTES.find(([m,l])=>l===v.line);
+    let walkStopName=v.line+' stop';
+    let routeNearDest=false;
+    if(routeData){
+      const pts=routeData[4];
+      let bestWalk=Infinity,bestDest=Infinity;
+      pts.forEach(p=>{
+        const dw=haversine(userLoc.lat,userLoc.lng,p[0],p[1]);
+        if(dw<bestWalk){
+          bestWalk=dw;
+          const ns=STATIONS.find(s=>haversine(p[0],p[1],s.lat,s.lng)<500);
+          if(ns) walkStopName=ns.name;
+        }
+        const dd=haversine(destLoc.lat,destLoc.lng,p[0],p[1]);
+        if(dd<bestDest) bestDest=dd;
+      });
+      routeNearDest=bestDest<3000;
+    }
+    const bd=typeof v.bearing==='number'?bearingDiff(v.bearing,bearingToDest):180;
+    const headingRight=bd<100;
+    const speedMpM=v.speed>0?(v.speed*60):(v.mode==='train'?500:v.mode==='tram'?220:200);
+    const arrivalMin=headingRight?Math.max(1,Math.round(walkDist/speedMpM)):null;
+    const straightDist=haversine(userLoc.lat,userLoc.lng,destLoc.lat,destLoc.lng);
+    const transitSpeedMpM=v.mode==='train'?600:v.mode==='tram'?250:270;
+    const transitMin=Math.max(2,Math.round(straightDist/transitSpeedMpM));
+    const totalMin=walkMin+(arrivalMin||walkMin*2)+transitMin;
+    const score=(headingRight?0:300)+(routeNearDest?0:400)+walkDist/100+totalMin;
+    options.push({v,walkDist,walkMin,walkStopName,arrivalMin,transitMin,totalMin,score,routeNearDest});
+  });
+  return options.sort((a,b)=>a.score-b.score).slice(0,5);
+}
+
+function buildJcCard(opt){
+  const{v,walkDist,walkMin,walkStopName,arrivalMin,transitMin,totalMin}=opt;
+  const color=MODE_COLOR[v.mode]||v.color||'#5b8dee';
+  const walkM=walkDist>=1000?`${(walkDist/1000).toFixed(1)}km`:`${Math.round(walkDist)}m`;
+  return `<div class="jc-card">
+    <div class="jc-top">
+      <div class="jc-face" style="background:${color}">${makeFaceSVG(v.mode,v.delay>2,color,52,getRouteLabel(v))}</div>
+      <div class="jc-info">
+        <div class="jc-route">${escHtml(v.label)}</div>
+        <div class="jc-linename">${escHtml(v.line)}</div>
+      </div>
+    </div>
+    <div class="jc-badges">
+      <span class="jc-badge walk">🚶 ${walkM} to ${escHtml(walkStopName)}</span>
+      ${arrivalMin!=null?`<span class="jc-badge arr">⏱ ~${arrivalMin} min away</span>`:''}
+      <span class="jc-badge dur">🗺 ~${totalMin} min total</span>
+    </div>
+    ${makeRouteMinimap(v)}
+    <button class="jc-go" onclick="jcStartFollow('${v.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">🚀 Let's go!</button>
+  </div>`;
+}
+
+function renderJourneyCards(options){
+  const track=document.getElementById('jc-track');
+  const dotsEl=document.getElementById('jc-dots');
+  const cardsEl=document.getElementById('journey-cards');
+  if(!track||!cardsEl) return;
+  if(!options.length){
+    cardsEl.classList.remove('show');
+    document.getElementById('journey-bar').classList.add('show');
+    document.getElementById('jb-title').textContent='No vehicles heading your way';
+    document.getElementById('jb-sub').textContent='Try again in a moment';
+    return;
+  }
+  document.getElementById('journey-bar').classList.remove('show');
+  jcTotal=options.length; jcIndex=0;
+  track.innerHTML=options.map(o=>buildJcCard(o)).join('');
+  dotsEl.innerHTML=options.map((_,i)=>`<div class="jc-dot ${i===0?'active':''}" id="jc-dot-${i}"></div>`).join('');
+  jcUpdateNav();
+  cardsEl.classList.add('show');
+  const vp=document.getElementById('jc-viewport');
+  if(vp&&!vp._swipeInit){
+    vp._swipeInit=true;
+    vp.addEventListener('touchstart',e=>{jcTouchStartX=e.touches[0].clientX;},{passive:true});
+    vp.addEventListener('touchend',e=>{
+      const dx=e.changedTouches[0].clientX-jcTouchStartX;
+      if(Math.abs(dx)>40) jcSwipe(dx>0?-1:1);
+    },{passive:true});
+  }
+}
+
+function jcSwipe(dir){
+  jcIndex=Math.max(0,Math.min(jcTotal-1,jcIndex+dir));
+  const track=document.getElementById('jc-track');
+  if(track) track.style.transform=`translateX(-${jcIndex*100}%)`;
+  document.querySelectorAll('.jc-dot').forEach((d,i)=>d.classList.toggle('active',i===jcIndex));
+  jcUpdateNav();
+}
+function jcUpdateNav(){
+  const p=document.getElementById('jc-prev'),n=document.getElementById('jc-next');
+  if(p) p.disabled=jcIndex===0;
+  if(n) n.disabled=jcIndex>=jcTotal-1;
+}
+function jcStartFollow(vehicleId){
+  const v=vehicles.find(v=>v.id===vehicleId);
+  if(!v) return;
+  selectMarker(vehicleId);
+  startFollow(vehicleId);
+  openDetail(v);
+  showToast(`Following ${v.label} — jump on! 🚀`);
+}
+
 function updateJourneyVehicles(){
   if(!userLoc||!destLoc){ clearJourneyHighlights(); return; }
-  const bearingToDest = bearingBetween(userLoc.lat,userLoc.lng,destLoc.lat,destLoc.lng);
-
-  // Score vehicles: heading roughly toward dest + close to user
-  const candidates = vehicles
-    .filter(v=>passesFilter(v) && typeof v.bearing==='number')
-    .map(v=>{
-      const bd   = bearingDiff(v.bearing, bearingToDest);
-      const dist = haversine(userLoc.lat,userLoc.lng,v.lat,v.lng);
-      return {v, bd, dist};
-    })
-    .filter(({bd})=>bd<90) // within 90° of correct direction
-    .sort((a,b)=>a.dist-b.dist)
-    .slice(0,3);
-
-  // Clear old highlights
+  const bearingToDest=bearingBetween(userLoc.lat,userLoc.lng,destLoc.lat,destLoc.lng);
+  const candidates=vehicles
+    .filter(v=>passesFilter(v)&&typeof v.bearing==='number')
+    .map(v=>{const bd=bearingDiff(v.bearing,bearingToDest);const dist=haversine(userLoc.lat,userLoc.lng,v.lat,v.lng);return{v,bd,dist};})
+    .filter(({bd})=>bd<90).sort((a,b)=>a.dist-b.dist).slice(0,3);
   clearJourneyHighlights();
-
   candidates.forEach(({v})=>{
     journeyHighlightedIds.add(v.id);
     const el=markers[v.id]?._icon?.querySelector('.vm-wrap');
     if(el) el.classList.add('journey-hl');
   });
-
-  const n=candidates.length;
-  const jb=document.getElementById('journey-bar');
-  const modes={train:'trains',tram:'trams',bus:'buses',vline:'coaches'};
-  if(n===0){
-    document.getElementById('jb-title').textContent='No vehicles heading your way';
-    document.getElementById('jb-sub').textContent='Try again in a moment';
+  const liveOptions=findJourneyOptions();
+  if(liveOptions.length>0){
+    renderJourneyCards(liveOptions);
   } else {
-    document.getElementById('jb-title').textContent=`${n} vehicle${n>1?'s':''} heading your way`;
-    const names=candidates.map(({v})=>v.label||v.mode).join(', ');
-    document.getElementById('jb-sub').textContent=names;
+    const demoOpts=vehicles
+      .filter(v=>passesFilter(v)&&typeof v.bearing==='number')
+      .map(v=>{
+        const bd=bearingDiff(v.bearing,bearingToDest);
+        const dist=haversine(userLoc.lat,userLoc.lng,v.lat,v.lng);
+        const walkMin=Math.max(1,Math.round(dist/80));
+        const straightDist=haversine(userLoc.lat,userLoc.lng,destLoc.lat,destLoc.lng);
+        const transitSpeedMpM=v.mode==='train'?600:v.mode==='tram'?250:270;
+        const transitMin=Math.max(2,Math.round(straightDist/transitSpeedMpM));
+        return{v,walkDist:dist,walkMin,walkStopName:v.line+' stop',arrivalMin:null,transitMin,totalMin:walkMin+transitMin,score:(bd<90?0:300)+dist/100};
+      })
+      .sort((a,b)=>a.score-b.score).slice(0,3);
+    renderJourneyCards(demoOpts);
   }
 }
 
@@ -2246,6 +2459,8 @@ function clearDestination(){
   clearJourneyHighlights();
   destLoc=null;
   document.getElementById('journey-bar').classList.remove('show');
+  const cardsEl=document.getElementById('journey-cards');
+  if(cardsEl) cardsEl.classList.remove('show');
 }
 
 // Refresh journey vehicle highlights on each data update
@@ -2396,20 +2611,26 @@ async function initAuth(){
         updateHeaderAuth();
         refreshUserPin();
         showToast('🛠️ Dev login — ' + d.user.username);
-        scheduleNudge(999999); // suppress nudge in dev mode
         return;
       }
     } catch(e){ console.warn('Dev login failed:', e); }
   }
 
   const token = getAuthToken();
-  if(!token){ updateHeaderAuth(); scheduleNudge(); return; }
+  if(!token){
+    updateHeaderAuth();
+    // Show auth screen on fresh load (no token)
+    setTimeout(()=>openAuth(), 1200);
+    return;
+  }
   try{
     const res = await fetch('/auth/me',{headers:{Authorization:'Bearer '+token}});
     if(res.ok){
       currentUser = await res.json();
     } else {
       clearAuthToken();
+      currentUser = null;
+      setTimeout(()=>openAuth(), 1200); // expired token
     }
   } catch(e){ /* network error, keep token for retry */ }
   updateHeaderAuth();
@@ -2538,7 +2759,7 @@ function authSignOut(){
   updateHeaderAuth();
   closeSheet('profile-sheet');
   showToast('Signed out 👋');
-  scheduleNudge(60000);
+  setTimeout(()=>openAuth(), 400);
 }
 
 // ── Avatar first-run onboarding ─────────────────────────────────────────
