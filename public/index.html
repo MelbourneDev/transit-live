@@ -340,7 +340,7 @@ button{font-family:var(--font);cursor:pointer}
   box-shadow:0 6px 24px rgba(0,0,0,0.14);transition:background 0.3s;
   animation:dp-face-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both}
 @keyframes dp-face-pop{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
-.dp-face-big svg{width:80px;height:80px}
+.dp-face-big svg{max-width:80px;max-height:80px;width:auto;height:auto}
 .dp-close-btn{
   position:absolute;top:14px;right:14px;
   width:32px;height:32px;border-radius:50%;
@@ -1127,60 +1127,156 @@ const VB = {train:{w:80,h:36},vline:{w:80,h:36},tram:{w:72,h:40},bus:{w:68,h:44}
 // Official PTV tram green and bus amber — trains use v.color from ROUTES
 const MODE_COLOR = {tram:'#2CA05A',bus:'#F5A623'};
 
-// makeFaceSVG — top-down sprite view, all 48×48 viewBox, sz = rendered px size
-function makeFaceSVG(mode, delayed, color, sz){
-  const c = color||'#5b8dee';
-  // Pupil color: darkened version of body color
-  const pupil = 'rgba(0,0,0,0.65)';
+// ── Vehicle sprite system ─────────────────────────────────────────────────────
+// GTA/Hotline-Miami top-down aesthetic: the SHAPE tells the story instantly.
+//   Tram  = very long thin capsule  (64×22) — unmistakably tram-shaped
+//   Train = long thin sleek bar     (60×20) — like tram but no cream stripe
+//   Bus   = squat boxy rectangle    (40×30) — totally different silhouette
+//
+// Tram & train are LANDSCAPE, face LEFT (eyes on left short end, stacked vertically).
+// Bus is PORTRAIT-ish, face TOP (eyes in top windscreen, side by side).
 
-  // ── Shared expressions ──
-  const happyMouth = `<path d="M17 33 Q24 38 31 33" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
-  const sadMouth   = `<path d="M17 36 Q24 31 31 36" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
-  const sadBrows   = `<line x1="13" y1="19" x2="20" y2="22" stroke="white" stroke-width="1.8" stroke-linecap="round" opacity="0.85"/>
-    <line x1="35" y1="19" x2="28" y2="22" stroke="white" stroke-width="1.8" stroke-linecap="round" opacity="0.85"/>`;
-  const eyes = `<circle cx="17" cy="25" r="5" fill="white" opacity="0.95"/>
-    <circle cx="31" cy="25" r="5" fill="white" opacity="0.95"/>
-    <circle cx="17" cy="25" r="3" fill="${pupil}"/>
-    <circle cx="31" cy="25" r="3" fill="${pupil}"/>
-    <circle cx="15.5" cy="23.5" r="1.1" fill="white" opacity="0.7"/>
-    <circle cx="29.5" cy="23.5" r="1.1" fill="white" opacity="0.7"/>`;
-  const mouth = delayed ? sadMouth : happyMouth;
-  const brows = delayed ? sadBrows : '';
+const SPRITE_DIMS = {tram:{w:64,h:22}, train:{w:60,h:20}, vline:{w:60,h:20}, bus:{w:40,h:30}};
 
-  // ── TRAM – top-down, green, pantograph dot + roof panel lines ──
-  if(mode==='tram'){
-    return `<svg width="${sz}" height="${sz}" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1" y="1" width="46" height="46" rx="13" fill="white"/>
-      <rect x="4" y="4" width="40" height="40" rx="11" fill="${c}"/>
-      <line x1="4" y1="16" x2="44" y2="16" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
-      <line x1="4" y1="32" x2="44" y2="32" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
-      <circle cx="24" cy="9" r="3" fill="white" opacity="0.55"/>
-      <circle cx="24" cy="9" r="1.5" fill="white" opacity="0.9"/>
-      ${brows}${eyes}${mouth}
-    </svg>`;
+function shortRouteLabel(v) {
+  if (!v || !v.line) return '';
+  return v.line.replace(/^Route\s+/i,'').replace(/\s+Line$/i,'').trim().slice(0,5);
+}
+
+function getIconScale() {
+  const z = map.getZoom ? map.getZoom() : 13;
+  if (z >= 18) return 1.0;
+  if (z === 17) return 0.79;
+  if (z === 16) return 0.625;
+  if (z === 15) return 0.5;
+  if (z === 14) return 0.4;
+  if (z === 13) return 0.32;
+  return 0;
+}
+
+// Shim for tooltip offset — uses bus height (tallest mode) as reference
+function getIconSz() {
+  const sc = getIconScale();
+  return sc === 0 ? 0 : Math.round(30 * sc);
+}
+
+// Side-by-side eyes (used for bus top-windscreen and detail panel)
+// Happy = pupils up, Sad = pupils down + worried brows + sweat drop
+function eyeSVG(cx1, cy1, cx2, cy2, r, pr, delayed) {
+  r  = (r  !== undefined) ? r  : 4;
+  pr = (pr !== undefined) ? pr : 2.2;
+  const pk    = 'rgba(0,0,0,0.65)';
+  const pyOff = delayed ? 1.2 : -1.2;
+  const hlR   = pr * 0.38;
+  const brows = delayed
+    ? `<line x1="${cx1-r}" y1="${cy1-r-0.8}" x2="${cx1+r*0.3}" y2="${cy1-r+2}"
+         stroke="white" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
+       <line x1="${cx2+r}" y1="${cy2-r-0.8}" x2="${cx2-r*0.3}" y2="${cy2-r+2}"
+         stroke="white" stroke-width="1.4" stroke-linecap="round" opacity="0.85"/>
+       <ellipse cx="${(cx1+cx2)/2}" cy="${cy1-r+0.5}" rx="1.2" ry="2" fill="#88ddff" opacity="0.85"/>`
+    : '';
+  return `
+    <circle cx="${cx1}" cy="${cy1}" r="${r}"  fill="white" opacity="0.95"/>
+    <circle cx="${cx2}" cy="${cy2}" r="${r}"  fill="white" opacity="0.95"/>
+    <circle cx="${cx1}" cy="${cy1+pyOff}" r="${pr}" fill="${pk}"/>
+    <circle cx="${cx2}" cy="${cy2+pyOff}" r="${pr}" fill="${pk}"/>
+    <circle cx="${cx1-pr*0.55}" cy="${cy1+pyOff-pr*0.45}" r="${hlR}" fill="white" opacity="0.65"/>
+    <circle cx="${cx2-pr*0.55}" cy="${cy2+pyOff-pr*0.45}" r="${hlR}" fill="white" opacity="0.65"/>
+    ${brows}`;
+}
+
+// Vertically-stacked eyes at the short LEFT end of a horizontal vehicle.
+// cy1 = upper eye y, cy2 = lower eye y, both at x = cx.
+// Happy pupils look LEFT (forward). Sad pupils droop right + worried brows above each.
+function eyeSVGvert(cx, cy1, cy2, r, pr, delayed) {
+  r  = (r  !== undefined) ? r  : 2.5;
+  pr = (pr !== undefined) ? pr : 1.4;
+  const pk    = 'rgba(0,0,0,0.65)';
+  const pxOff = delayed ?  0.5 : -0.5;
+  const pyOff = delayed ?  0.35 : -0.25;
+  const hlR   = pr * 0.38;
+  const sadDecor = delayed ? `
+    <line x1="${cx-r*0.4}" y1="${cy1-r-0.7}" x2="${cx+r*1.1}" y2="${cy1-r+1.2}"
+      stroke="white" stroke-width="1.2" stroke-linecap="round" opacity="0.82"/>
+    <line x1="${cx-r*0.4}" y1="${cy2-r-0.7}" x2="${cx+r*1.1}" y2="${cy2-r+1.2}"
+      stroke="white" stroke-width="1.2" stroke-linecap="round" opacity="0.82"/>
+    <ellipse cx="${cx+r+2}" cy="${(cy1+cy2)/2}" rx="1" ry="1.7" fill="#88ddff" opacity="0.85"/>` : '';
+  return `
+    <circle cx="${cx}" cy="${cy1}" r="${r}"  fill="white" opacity="0.95"/>
+    <circle cx="${cx}" cy="${cy2}" r="${r}"  fill="white" opacity="0.95"/>
+    <circle cx="${cx+pxOff}" cy="${cy1+pyOff}" r="${pr}" fill="${pk}"/>
+    <circle cx="${cx+pxOff}" cy="${cy2+pyOff}" r="${pr}" fill="${pk}"/>
+    <circle cx="${cx+pxOff-hlR}" cy="${cy1+pyOff-hlR}" r="${hlR}" fill="white" opacity="0.65"/>
+    <circle cx="${cx+pxOff-hlR}" cy="${cy2+pyOff-hlR}" r="${hlR}" fill="white" opacity="0.65"/>
+    ${sadDecor}`;
+}
+
+function makeVehicleSVG(mode, delayed, color, scale, label) {
+  const c   = color || '#5b8dee';
+  const d   = SPRITE_DIMS[mode] || SPRITE_DIMS.bus;
+  const W   = Math.max(6, Math.round(d.w * scale));
+  const H   = Math.max(4, Math.round(d.h * scale));
+  const lbl = (label || '').slice(0, 5);
+  const showText = scale >= 0.79 && lbl;
+
+  // ── TRAM ──────────────────────────────────────────────────────────────
+  // 64×22 landscape capsule — instantly "tram" from proportions alone.
+  // Melbourne tram green (#2CA05A) + cream centre stripe (iconic livery).
+  // Passenger window rects along both long sides. Pantograph diamond on roof.
+  // Cute face (two stacked eyes) on left short end = the front cab.
+  if (mode === 'tram') {
+    return {w:W, h:H, svg:`<svg width="${W}" height="${H}" viewBox="0 0 64 22" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="0" width="64" height="22" rx="11" fill="white"/>
+      <rect x="2" y="2" width="60" height="18" rx="9" fill="${c}"/>
+      <rect x="2" y="8" width="60" height="6" fill="rgba(255,252,210,0.65)"/>
+      <rect x="14" y="3" width="5" height="3" rx="0.5" fill="rgba(0,0,0,0.22)"/>
+      <rect x="22" y="3" width="5" height="3" rx="0.5" fill="rgba(0,0,0,0.22)"/>
+      <rect x="30" y="3" width="5" height="3" rx="0.5" fill="rgba(0,0,0,0.22)"/>
+      <rect x="38" y="3" width="5" height="3" rx="0.5" fill="rgba(0,0,0,0.22)"/>
+      <rect x="46" y="3" width="5" height="3" rx="0.5" fill="rgba(0,0,0,0.22)"/>
+      <rect x="14" y="16" width="5" height="3" rx="0.5" fill="rgba(0,0,0,0.22)"/>
+      <rect x="22" y="16" width="5" height="3" rx="0.5" fill="rgba(0,0,0,0.22)"/>
+      <rect x="30" y="16" width="5" height="3" rx="0.5" fill="rgba(0,0,0,0.22)"/>
+      <rect x="38" y="16" width="5" height="3" rx="0.5" fill="rgba(0,0,0,0.22)"/>
+      <rect x="46" y="16" width="5" height="3" rx="0.5" fill="rgba(0,0,0,0.22)"/>
+      <path d="M 42 11 L 45 8.5 L 48 11 L 45 13.5 Z" fill="rgba(255,255,255,0.72)"/>
+      <line x1="12" y1="2" x2="12" y2="20" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+      ${eyeSVGvert(6.5, 7, 15, 2.5, 1.4, delayed)}
+    </svg>`};
   }
 
-  // ── TRAIN – top-down, line color, carriage coupling dots ──
-  if(mode==='train'||mode==='vline'){
-    return `<svg width="${sz}" height="${sz}" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1" y="1" width="46" height="46" rx="11" fill="white"/>
-      <rect x="4" y="4" width="40" height="40" rx="9" fill="${c}"/>
-      <line x1="4" y1="16" x2="44" y2="16" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
-      <line x1="4" y1="32" x2="44" y2="32" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
-      <rect x="19" y="4" width="10" height="4" rx="2" fill="rgba(255,255,255,0.35)"/>
-      <rect x="19" y="40" width="10" height="4" rx="2" fill="rgba(255,255,255,0.35)"/>
-      ${brows}${eyes}${mouth}
-    </svg>`;
+  // ── TRAIN / V-LINE ─────────────────────────────────────────────────────
+  // 60×20 landscape bar — same long shape as tram but sleeker and line-coloured.
+  // Solid dark window stripe along both sides (vs tram's individual windows).
+  // No cream stripe — colour + stripe style distinguishes it from tram.
+  // Rounded aerodynamic nose. Rear coupling bump on right end.
+  if (mode === 'train' || mode === 'vline') {
+    return {w:W, h:H, svg:`<svg width="${W}" height="${H}" viewBox="0 0 60 20" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="0" width="60" height="20" rx="10" fill="white"/>
+      <rect x="2" y="2" width="56" height="16" rx="8" fill="${c}"/>
+      <rect x="11" y="3"  width="38" height="4" rx="1.5" fill="rgba(0,0,0,0.22)"/>
+      <rect x="11" y="13" width="38" height="4" rx="1.5" fill="rgba(0,0,0,0.22)"/>
+      <line x1="11" y1="10" x2="55" y2="10" stroke="rgba(255,255,255,0.18)" stroke-width="1.2"/>
+      <line x1="11" y1="2" x2="11" y2="18" stroke="rgba(255,255,255,0.28)" stroke-width="1"/>
+      <rect x="55" y="7" width="3" height="6" rx="1.5" fill="rgba(255,255,255,0.4)"/>
+      ${eyeSVGvert(6, 6, 14, 2.5, 1.4, delayed)}
+    </svg>`};
   }
 
-  // ── BUS – top-down, amber, dest board strip at top ──
-  return `<svg width="${sz}" height="${sz}" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-    <rect x="1" y="1" width="46" height="46" rx="11" fill="white"/>
-    <rect x="4" y="4" width="40" height="40" rx="9" fill="${c}"/>
-    <rect x="6" y="6" width="36" height="7" rx="4" fill="rgba(0,0,0,0.2)"/>
-    <line x1="4" y1="32" x2="44" y2="32" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
-    ${brows}${eyes}${mouth}
-  </svg>`;
+  // ── BUS ────────────────────────────────────────────────────────────────
+  // 40×30 upright boxy rectangle — totally different from tram/train proportions.
+  // Amber body. Prominent white windscreen at top, eyes looking out.
+  // Roof AC unit box mid-rear. Immediately recognisable as a bus.
+  return {w:W, h:H, svg:`<svg width="${W}" height="${H}" viewBox="0 0 40 30" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0" y="0" width="40" height="30" rx="6" fill="white"/>
+    <rect x="2" y="2" width="36" height="26" rx="4.5" fill="${c}"/>
+    <rect x="5" y="3"  width="30" height="12" rx="4"   fill="rgba(255,255,255,0.88)"/>
+    <rect x="7" y="5"  width="10" height="3"  rx="1.5" fill="rgba(255,255,255,0.5)"/>
+    <rect x="13" y="20" width="14" height="7" rx="2.5" fill="rgba(0,0,0,0.18)"/>
+    <rect x="15" y="22" width="10" height="3" rx="1.5" fill="rgba(255,255,255,0.18)"/>
+    ${eyeSVG(13, 10, 27, 10, 3.5, 2, delayed)}
+    ${showText ? `<text x="20" y="17" text-anchor="middle" dominant-baseline="middle" font-family="system-ui,sans-serif" font-size="5.5" font-weight="800" fill="rgba(80,40,0,0.72)">${lbl}</text>` : ''}
+  </svg>`};
 }
 
 function makeInspectorSVG(){
@@ -1200,28 +1296,19 @@ function makeInspectorSVG(){
   </svg>`;
 }
 
-// ── makeIcon ───────────────────────────────────────────────────────────
-// Returns SVG HEIGHT in px; 0 = dot mode (zoom ≤12)
-function getIconSz(){
-  const z = map.getZoom ? map.getZoom() : 13;
-  const h = {18:56,17:44,16:36,15:28,14:22,13:18}[z];
-  if(h) return h;
-  return z > 18 ? 56 : 0; // 0 = dot mode
-}
-
 function makeIcon(v){
-  const delayed = v.delay>2;
-  const sz = getIconSz(); // square px size; 0 = dot mode
-  const color = MODE_COLOR[v.mode]||v.color||'#5b8dee';
-  const glowCol = (delayed?'#ff6b6b':color)+'66';
-  const seed = typeof v.id==='string'
-    ? [...v.id].reduce((a,c)=>a+c.charCodeAt(0),0) : Number(v.id);
-  const bobDelay = (seed*173)%2200;
+  const delayed  = v.delay > 2;
+  const scale    = getIconScale();
+  const color    = MODE_COLOR[v.mode] || v.color || '#5b8dee';
+  const glowCol  = (delayed ? '#ff6b6b' : color) + '66';
+  const seed     = typeof v.id === 'string'
+    ? [...v.id].reduce((a,c) => a + c.charCodeAt(0), 0) : Number(v.id);
+  const bobDelay = (seed * 173) % 2200;
 
-  if(sz===0){
-    const dot=16;
+  if (scale === 0) {
+    const dot = 16;
     return L.divIcon({
-      className:'',iconSize:[dot,dot],iconAnchor:[dot/2,dot/2],
+      className:'', iconSize:[dot,dot], iconAnchor:[dot/2,dot/2],
       html:`<div class="vm-wrap" style="width:${dot}px;height:${dot}px">
         <div class="vm-inner" style="animation-delay:${bobDelay}ms">
           <div style="width:${dot}px;height:${dot}px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 1px 6px rgba(0,0,0,.35)"></div>
@@ -1229,13 +1316,16 @@ function makeIcon(v){
     });
   }
 
-  const pad=6; const sq=sz+pad;
-  const svg=makeFaceSVG(v.mode,delayed,color,sz);
+  const lbl = shortRouteLabel(v);
+  const {svg, w, h} = makeVehicleSVG(v.mode, delayed, color, scale, lbl);
+  const pad = 6;
+  const iw  = w + pad;
+  const ih  = h + pad;
   return L.divIcon({
     className:'',
-    iconSize:[sq,sq],
-    iconAnchor:[sq/2,sq/2],
-    html:`<div class="vm-wrap" style="width:${sq}px;height:${sq}px">
+    iconSize:  [iw, ih],
+    iconAnchor:[iw/2, ih/2],
+    html:`<div class="vm-wrap" style="width:${iw}px;height:${ih}px">
       <div class="vm-inner" style="animation-delay:${bobDelay}ms;filter:drop-shadow(0 3px 8px ${glowCol})">
         ${svg}
       </div>
@@ -1355,7 +1445,10 @@ function openDetail(v){
   // Big face SVG in detail hero
   const faceEl=document.getElementById('dp-face');
   const dpColor=MODE_COLOR[v.mode]||v.color||'#5b8dee';
-  faceEl.innerHTML=makeFaceSVG(v.mode,delayed,dpColor,78);
+  const _dd = SPRITE_DIMS[v.mode] || SPRITE_DIMS.bus;
+  const dpScale = Math.min(76 / _dd.w, 76 / _dd.h);
+  const {svg: _dpSvg} = makeVehicleSVG(v.mode, delayed, dpColor, dpScale, '');
+  faceEl.innerHTML = _dpSvg;
   faceEl.style.background='transparent';
   faceEl.style.boxShadow=`0 6px 24px ${dpColor}44`;
   document.getElementById('dp-route').textContent=v.label;
