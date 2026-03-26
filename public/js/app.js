@@ -357,7 +357,7 @@ function updateNearestVehicle(){
 const fModes=new Set(['train','tram','bus','vline']);
 const fLines=new Set(ROUTES.map(r=>r[1]));
 let fSearch='';
-let showAll=false; // Search-first UX: empty map by default
+let showAll=true;
 
 function buildFilterPanel(){
   const body=document.getElementById('filter-body');
@@ -1243,48 +1243,68 @@ const journeyHighlightedIds = new Set();
 const journeyRoutePaths = new Map();
 
 function initSearch(){
-  const searchBox = document.getElementById('mapbox-search');
-  if(!searchBox) return;
+  const input = document.getElementById('addr-search-input');
+  const results = document.getElementById('addr-suggestions');
+  if(!input || !results) return;
 
-  const configure = () => {
-    searchBox.accessToken = MAPBOX_TOKEN;
-    searchBox.options = {
-      language: 'en',
-      country: 'AU',
-      proximity: { lng: 144.9631, lat: -37.8136 },
-      types: ['place','neighborhood','address','poi','street'],
-      limit: 6
-    };
-    searchBox.addEventListener('retrieve', e => {
-      const feature = e.detail?.features?.[0];
-      if(!feature) return;
-      const [lng, lat] = feature.geometry.coordinates;
-      const name = feature.properties?.name
-        || feature.properties?.place_name
-        || feature.properties?.full_address
-        || 'Location';
-      const fullAddr = feature.properties?.full_address
-        || feature.properties?.place_formatted
-        || name;
-      selectAddrResult(lat, lng, name, fullAddr);
-    });
-  };
+  let debounceTimer = null;
 
-  if(customElements.get('mapbox-search-box')){
-    configure();
-  } else {
-    customElements.whenDefined('mapbox-search-box').then(configure);
-  }
+  input.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    const q = input.value.trim();
+    if(!q){ results.innerHTML=''; results.classList.remove('show'); return; }
+    debounceTimer = setTimeout(async () => {
+      try{
+        const data = await fetch(`/api/journey/autocomplete?q=${encodeURIComponent(q)}`).then(r=>r.json());
+        if(!data.length){ results.innerHTML=''; results.classList.remove('show'); return; }
+        const typeIco = {train:'🚆',tram:'🚋',bus:'🚌',suburb:'🏘',station:'🚉',university:'🎓',hospital:'🏥'};
+        results.innerHTML = data.map((l,i)=>`
+          <div class="addr-suggestion" data-i="${i}" data-lat="${l.lat}" data-lng="${l.lng}" data-name="${escHtml(l.name)}" data-type="${escHtml(l.type||'')}">
+            <span class="addr-sug-ico">${typeIco[l.type]||'📍'}</span>
+            <div>
+              <div class="addr-result-main">${escHtml(l.name)}</div>
+              <div class="addr-result-sub">${escHtml(l.type||'Location')}</div>
+            </div>
+          </div>`).join('');
+        results.classList.add('show');
+        results.querySelectorAll('.addr-suggestion').forEach(el=>{
+          el.addEventListener('click', ()=>{
+            const lat = parseFloat(el.dataset.lat);
+            const lng = parseFloat(el.dataset.lng);
+            const name = el.dataset.name;
+            clearAddrSearch();
+            selectAddrResult(lat, lng, name, name);
+          });
+        });
+      }catch(e){}
+    }, 220);
+  });
+
+  input.addEventListener('keydown', e=>{
+    if(e.key==='Escape'){ clearAddrSearch(); results.classList.remove('show'); }
+    if(e.key==='Enter'){
+      const first = results.querySelector('.addr-suggestion');
+      if(first) first.click();
+    }
+  });
+
+  // Hide suggestions when clicking outside
+  document.addEventListener('click', e=>{
+    if(!input.contains(e.target) && !results.contains(e.target))
+      results.classList.remove('show');
+  });
 }
 
 function clearAddrSearch(){
-  const sb = document.getElementById('mapbox-search');
-  if(sb) sb.value = '';
+  const input = document.getElementById('addr-search-input');
+  const results = document.getElementById('addr-suggestions');
+  if(input) input.value = '';
+  if(results){ results.innerHTML=''; results.classList.remove('show'); }
 }
 
 function selectAddrResult(lat, lng, name, fullAddr){
   clearAddrSearch();
-  document.getElementById('mapbox-search')?.blur?.();
+  document.getElementById('addr-search-input')?.blur();
   placeDestPin(+lat, +lng, name, fullAddr);
   destLoc = {lat:+lat, lng:+lng, name};
   // Draw placeholder dashed straight line immediately

@@ -55,37 +55,45 @@ button{font-family:var(--font);cursor:pointer}
   animation:av-glow 2.4s ease-in-out infinite;
   transition:transform 0.6s cubic-bezier(0.34,1.2,0.64,1)}
 .av-user-pin svg{display:block;width:56px;height:56px}
-/* ── Address search — Mapbox Search Box web component ──────────────── */
+/* ── Address search ─────────────────────────────────────────────────── */
 #addr-search-wrap{
   position:absolute;
   top:calc(66px + env(safe-area-inset-top));
   left:12px;right:12px;z-index:900}
-/* Theme the web component via CSS custom properties */
-#mapbox-search{
+#addr-search-input{
   width:100%;
-  --mb-font-family: var(--font);
-  --mb-color-primary: var(--blue);
-  --mb-color-background: var(--panel);
-  --mb-color-text-primary: var(--text);
-  --mb-color-text-secondary: var(--text2);
-  --mb-color-placeholder: var(--text3);
-  --mb-border-radius: 50px;
-  --mb-box-shadow: 0 4px 20px rgba(0,0,0,.15);
-  --mb-input-height: 44px;
-  --mb-color-background-hover: var(--bg2);
-  --mb-color-background-active: rgba(91,141,238,0.08);
-  --mb-color-icon: var(--text3);
-  font-family: var(--font)}
-/* Suggestions panel that the component appends to body */
-.mbx-suggestions-container{
-  border-radius:16px!important;
-  border:1.5px solid var(--border2)!important;
-  box-shadow:0 8px 32px rgba(0,0,0,.18)!important;
-  backdrop-filter:blur(12px)!important;
-  overflow:hidden!important}
-.mbx-suggestion{
-  font-family:var(--font)!important;
-  font-size:.86rem!important;font-weight:600!important}
+  height:44px;
+  padding:0 18px;
+  border-radius:50px;
+  border:1.5px solid var(--border2);
+  background:var(--panel);
+  color:var(--text);
+  font-family:var(--font);
+  font-size:.88rem;
+  font-weight:600;
+  box-shadow:0 4px 20px rgba(0,0,0,.15);
+  outline:none;
+  box-sizing:border-box;
+  -webkit-appearance:none}
+#addr-search-input::placeholder{color:var(--text3)}
+#addr-search-input:focus{border-color:var(--blue);box-shadow:0 4px 24px rgba(91,141,238,.22)}
+#addr-suggestions{
+  display:none;
+  margin-top:6px;
+  background:var(--panel);
+  border-radius:16px;
+  border:1.5px solid var(--border2);
+  box-shadow:0 8px 32px rgba(0,0,0,.18);
+  overflow:hidden;
+  backdrop-filter:blur(12px)}
+#addr-suggestions.show{display:block}
+.addr-suggestion{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;
+  cursor:pointer;
+  transition:background .12s}
+.addr-suggestion:hover{background:var(--bg2)}
+.addr-sug-ico{font-size:1.15rem;flex-shrink:0}
 /* Keep legacy addr-result classes for any remnant usage */
 .addr-result-main{font-size:.86rem;font-weight:700;color:var(--text)}
 .addr-result-sub{font-size:.72rem;color:var(--text2);font-weight:600}
