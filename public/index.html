@@ -9,9 +9,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
-<script src="https://api.mapbox.com/search-js/v1.5.0/web.js" defer></script>
+<link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/pmtiles@3/dist/pmtiles.js"></script>
+<script>
+  const protocol = new pmtiles.Protocol();
+  maplibregl.addProtocol('pmtiles', protocol.tile.bind(protocol));
+</script>
 <link rel="stylesheet" href="/css/style.css"/>
 
 </head>
@@ -81,10 +85,6 @@
   </button>
 </header>
 
-<!-- Address search bar — Mapbox Search Box web component -->
-<div id="addr-search-wrap">
-  <mapbox-search-box id="mapbox-search" placeholder="Search an address or place..."></mapbox-search-box>
-</div>
 
 <!-- Journey Bottom Sheet -->
 <div id="journey-bottom-sheet">

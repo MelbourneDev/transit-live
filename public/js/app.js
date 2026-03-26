@@ -2,8 +2,6 @@
 // ── Constants ──────────────────────────────────────────────────────────
 const API_URL    = '/api/vehicles';
 const REFRESH_MS = 15000;
-const MAPBOX_TOKEN = window.MAPBOX_TOKEN || '';
-const MAPBOX_STYLE = 'mapbox://styles/matt-walton/cmn73f7qw003k01r972eddm5i';
 
 const ALERT_EFFECTS = {
   1:'No Service',2:'Reduced Service',3:'Significant Delays',
@@ -184,17 +182,26 @@ function locateUser(){
 }
 
 // ── Map ────────────────────────────────────────────────────────────────
-mapboxgl.accessToken = MAPBOX_TOKEN;
-const map = new mapboxgl.Map({
+const map = new maplibregl.Map({
   container: 'map',
-  style: MAPBOX_STYLE,
+  style: '/styles/maplibre-style.json',
   center: [144.9631, -37.8136],  // [lng, lat]
   zoom: 13,
   pitch: 45,
   bearing: -15,
   antialias: true
 });
-map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+map.on('error', e => console.error('[MapLibre error]', e.error?.message || e));
+map.on('load', () => {
+  map.setFog({
+    range: [2, 12],
+    color: '#d4eef5',
+    'horizon-blend': 0.08,
+    'high-color': '#a8d8e8',
+    'space-color': '#7ec8e3'
+  });
+});
 
 // Track which marker IDs are currently added to the map
 const markersOnMap = new Set();
@@ -207,37 +214,6 @@ function mapReady(){
   });
 }
 
-// ── Map palette enforcement ─────────────────────────────────────────────
-// Confirm/enforce the custom palette over the loaded style layers.
-// Style URL: mapbox://styles/matt-walton/cmn73f7qw003k01r972eddm5i
-// Palette: Land #A8E6CF (Mint Green), Water #4DD0E1 (Turquoise), Buildings #FFF9E1 (Cream)
-function applyMapPalette(){
-  try {
-    const layers = map.getStyle()?.layers || [];
-    layers.forEach(layer => {
-      try {
-        const sl = (layer['source-layer'] || '').toLowerCase();
-        const id = (layer.id || '').toLowerCase();
-        const t  = layer.type;
-        if(t === 'background'){
-          map.setPaintProperty(layer.id, 'background-color', '#A8E6CF');
-        } else if(t === 'fill' && (sl === 'water' || id.includes('water'))){
-          map.setPaintProperty(layer.id, 'fill-color', '#4DD0E1');
-          map.setPaintProperty(layer.id, 'fill-opacity', 1);
-        } else if(t === 'fill' && (sl==='land'||sl==='landcover'||sl==='landuse_overlay'||id==='land')){
-          map.setPaintProperty(layer.id, 'fill-color', '#A8E6CF');
-        } else if(sl === 'building' || id.includes('building')){
-          if(t === 'fill-extrusion'){
-            map.setPaintProperty(layer.id, 'fill-extrusion-color', '#FFF9E1');
-            map.setPaintProperty(layer.id, 'fill-extrusion-opacity', 0.85);
-          } else if(t === 'fill'){
-            map.setPaintProperty(layer.id, 'fill-color', '#FFF9E1');
-          }
-        }
-      } catch(e){} // ignore layers that reject the paint property
-    });
-  } catch(e){ console.warn('applyMapPalette:', e.message); }
-}
 
 // ── Route polylines → Mapbox GeoJSON sources ───────────────────────────
 const routePolylines={}; // stores source-id strings for compat
@@ -274,7 +250,7 @@ function buildStations(){
     el.className='station-dot';
     el.style.cssText=`background:${s.color};cursor:pointer`;
     el.title=s.name;
-    new mapboxgl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map);
+    new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map);
   });
 }
 
@@ -328,7 +304,7 @@ function placeUserPin(lat,lng){
   const el=document.createElement('div');
   el.innerHTML=makePinHTML();
   el.title='You are here 📍';
-  userLocMarker=new mapboxgl.Marker({element:el,anchor:'center'})
+  userLocMarker=new maplibregl.Marker({element:el,anchor:'center'})
     .setLngLat([lng,lat]).addTo(map);
 }
 function refreshUserPin(){
@@ -460,7 +436,6 @@ function toggleShowAll(){
   applyFilters();
 }
 function applyFilters(){
-  syncRouteLines();
   vehicles.forEach(v=>{
     const m=markers[v.id]; if(!m) return;
     if(passesFilter(v)){
@@ -619,7 +594,7 @@ function makeInspectorSVG(){
   </svg>`;
 }
 
-// ── makeMarkerEl — returns a DOM element for mapboxgl.Marker ────────────
+// ── makeMarkerEl — returns a DOM element for maplibregl.Marker ───────────
 function getIconSz(){
   const z = map.getZoom ? map.getZoom() : 14;
   if(z >= 17) return 52;
@@ -899,7 +874,7 @@ function upsert(v){
     const el=makeMarkerEl(v);
     el.title=makeTooltip(v);
     el.addEventListener('click',()=>{ selectMarker(v.id); openDetail(v); });
-    const m=new mapboxgl.Marker({element:el,anchor:'center'}).setLngLat([v.lng,v.lat]);
+    const m=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([v.lng,v.lat]);
     m._v=v; m._lastDelay=v.delay; m._lastBearing=v.bearing;
     if(passesFilter(v)){ m.addTo(map); markersOnMap.add(v.id); }
     markers[v.id]=m;
@@ -938,7 +913,7 @@ async function fetchInspectors(){
         el.style.cssText='width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer';
         el.innerHTML=`<div class="vm-inner">${r.route==='inspector'||!r.route?makeInspectorSVG():`<div style="font-size:1.8rem">${ico}</div>`}</div>`;
         // Mapbox popup
-        const popup=new mapboxgl.Popup({closeButton:true,maxWidth:'260px',className:'insp-popup-wrap'})
+        const popup=new maplibregl.Popup({closeButton:true,maxWidth:'260px',className:'insp-popup-wrap'})
           .setHTML(`<div class="insp-popup">
             <div class="insp-popup-type">${escHtml((r.transport||'unknown').toUpperCase())} · ${escHtml(r.route||'inspector')}</div>
             <div class="insp-popup-title">${ico} ${r.route==='inspector'?'Ticket Inspector spotted!':r.route==='vibes'?'Good vibes here!':r.route==='avoid'?'Avoid this vehicle':'Something funny!'}</div>
@@ -949,7 +924,7 @@ async function fetchInspectors(){
               <button class="insp-vote-btn" onclick="voteInspector('${id}','gone')">✅ Gone (${goneVotes})</button>
             </div>
           </div>`);
-        const m=new mapboxgl.Marker({element:el,anchor:'center'})
+        const m=new maplibregl.Marker({element:el,anchor:'center'})
           .setLngLat([r.lng,r.lat]).setPopup(popup).addTo(map);
         inspMarkers[id]=m;
       }
@@ -1197,10 +1172,8 @@ async function init(){
     loadGhostMode();
     buildFilterPanel();
 
-    // Wait for Mapbox map to load before adding sources/layers
+    // Wait for Mapbox map to load before adding markers/sources
     await mapReady();
-    applyMapPalette();
-    buildRouteSources();
     buildStations();
 
     // Geolocation — initial fix then continuous watch
@@ -1342,6 +1315,13 @@ async function fetchAndActivateJourney(fromLat, fromLng, toLat, toLng, toName){
     const journeys = data.journeys || [];
     if(!journeys.length) throw new Error('No journeys');
 
+    // Treat fallback mode as no real route — just show nearest vehicles
+    if(data.mode === 'fallback'){
+      updateJourneyVehicles();
+      showJourneyBottomSheet(null);
+      return;
+    }
+
     activeJourney = journeys[0];
 
     // Index all routePaths for vehicle animation matching
@@ -1405,7 +1385,7 @@ function updateJourneyPolyline(){
     ...coords,
     [destLoc.lng,destLoc.lat]
   ];
-  const bounds = allCoords.reduce((b,c)=>b.extend(c), new mapboxgl.LngLatBounds(allCoords[0],allCoords[0]));
+  const bounds = allCoords.reduce((b,c)=>b.extend(c), new maplibregl.LngLatBounds(allCoords[0],allCoords[0]));
   map.fitBounds(bounds,{padding:50,maxZoom:15,animate:true});
 }
 
@@ -1432,8 +1412,15 @@ function showJourneyBottomSheet(journey){
   if(destLoc) document.getElementById('jbs-dest').textContent = `To: ${destLoc.name}`;
 
   if(!journey){
-    document.getElementById('jbs-route-name').textContent = 'Route not found';
-    document.getElementById('jbs-route-sub').textContent = 'Try a different destination';
+    const pill = document.getElementById('jbs-mode-pill');
+    pill.style.background = '#aaa';
+    pill.textContent = '🔍';
+    document.getElementById('jbs-route-name').textContent = 'No direct route found';
+    document.getElementById('jbs-route-sub').textContent = 'Showing nearest vehicles instead';
+    document.getElementById('jbs-duration').textContent   = '—';
+    document.getElementById('jbs-depart-time').textContent = '—';
+    document.getElementById('jbs-walk-time').textContent   = '—';
+    document.getElementById('jbs-next-stop').textContent   = '—';
     return;
   }
 
@@ -1442,14 +1429,16 @@ function showJourneyBottomSheet(journey){
 
   if(transitLeg){
     const modeEmoji = {train:'🚆',tram:'🚊',bus:'🚌',vline:'🚂'}[transitLeg.type]||'🚌';
+    const stopCount = transitLeg.routePath?.length > 1 ? `${transitLeg.routePath.length - 1} stops` : '';
     const pill = document.getElementById('jbs-mode-pill');
     pill.style.background = transitLeg.color || '#5b8dee';
     pill.textContent = modeEmoji;
-    document.getElementById('jbs-route-name').textContent = transitLeg.line || '—';
+    document.getElementById('jbs-route-name').textContent =
+      [transitLeg.line, stopCount].filter(Boolean).join(' · ');
     document.getElementById('jbs-route-sub').textContent =
       transitLeg.minsUntilDep != null ? `Departs in ${transitLeg.minsUntilDep} min` :
       transitLeg.delay > 0 ? `${transitLeg.delay} min late` : 'On time';
-    document.getElementById('jbs-duration').textContent   = journey.duration || '—';
+    document.getElementById('jbs-duration').textContent    = journey.duration || '—';
     document.getElementById('jbs-depart-time').textContent = transitLeg.depart || '—';
     document.getElementById('jbs-walk-time').textContent   = walkLeg ? walkLeg.duration : '—';
     document.getElementById('jbs-next-stop').textContent   = transitLeg.from || '—';
@@ -1458,8 +1447,8 @@ function showJourneyBottomSheet(journey){
     const pill = document.getElementById('jbs-mode-pill');
     pill.style.background = '#4ecdc4';
     pill.textContent = '🚶';
-    document.getElementById('jbs-route-name').textContent  = 'Walk';
-    document.getElementById('jbs-route-sub').textContent   = '';
+    document.getElementById('jbs-route-name').textContent  = 'Walk only';
+    document.getElementById('jbs-route-sub').textContent   = `${journey.duration || '?'} min walk`;
     document.getElementById('jbs-duration').textContent    = journey.duration || '—';
     document.getElementById('jbs-depart-time').textContent = 'Now';
     document.getElementById('jbs-walk-time').textContent   = journey.duration || '—';
@@ -1477,7 +1466,7 @@ function placeDestPin(lat, lng, name, fullAddr){
   const el = document.createElement('div');
   el.innerHTML = pinSvg;
   el.style.cursor = 'pointer';
-  destMarker = new mapboxgl.Marker({element:el,anchor:'bottom'}).setLngLat([lng,lat]).addTo(map);
+  destMarker = new maplibregl.Marker({element:el,anchor:'bottom'}).setLngLat([lng,lat]).addTo(map);
 }
 
 function openDestSheet(lat, lng, name, fullAddr){

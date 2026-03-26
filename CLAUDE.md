@@ -4,33 +4,34 @@
 
 Real-time public transport tracker for Melbourne, Australia. Shows live GPS positions and delay information for Metro Trains, Yarra Trams, Metro Buses, and V/Line regional coaches on an interactive 3D isometric map. Data refreshes every 15 seconds via Transport Victoria's GTFS-Realtime feed.
 
-**Stack:** Node.js + Express backend, single-page HTML/CSS/Vanilla JS frontend with **Mapbox GL JS v3.3.0** (NOT Leaflet — fully migrated).
+**Stack:** Node.js + Express backend, single-page HTML/CSS/Vanilla JS frontend with **MapLibre GL JS v4** + **PMTiles v3** (migrated from Mapbox GL JS).
 
 ---
 
-## Map Library — Mapbox GL JS (NOT Leaflet)
+## Map Library — MapLibre GL JS v4 (NOT Mapbox, NOT Leaflet)
 
-The project was migrated from Leaflet to **Mapbox GL JS v3.3.0**. There is no Leaflet anywhere in the codebase.
+The project uses **MapLibre GL JS v4** loaded from unpkg.com. There is no Mapbox GL JS or Leaflet anywhere in the codebase.
 
-- **CDN:** `https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js`
-- **Custom style:** `mapbox://styles/matt-walton/cmn73f7qw003k01r972eddm5i`
-- **Palette enforced on load:** Land `#A8E6CF` (Mint Green), Water `#4DD0E1` (Turquoise), Buildings `#FFF9E1` (Cream)
-- **Search:** Mapbox Search JS v1.5.0 (`<mapbox-search-box>` web component, AU/Melbourne bias)
+- **CDN:** `https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js`
+- **PMTiles:** `https://unpkg.com/pmtiles@3/dist/pmtiles.js` — registered as a protocol on startup
+- **Style:** `/styles/maplibre-style.json` (served as a static file)
+- **Fog:** Set on `map.on('load')` — range [2,12], color `#d4eef5`, horizon-blend 0.08
+- **Search:** Removed (will be replaced — `<mapbox-search-box>` element deleted from HTML)
 - **Initial view:** Center `[144.9631, -37.8136]`, zoom 13, pitch 45, bearing -15, antialias true
 
-### Mapbox Token
+### No API token required
 
-The Mapbox token is stored as `MAPBOX_TOKEN` in `.env` and injected into `index.html` at request time by the Express server (via `__MAPBOX_TOKEN__` placeholder substitution). It is **never committed to source**. `app.js` reads it from `window.MAPBOX_TOKEN` which is set by the injected inline script.
+MapLibre GL JS is open-source and requires no access token. The `MAPBOX_TOKEN` env var and server-injection placeholder (`__MAPBOX_TOKEN__`) are still present in the codebase but unused — they can be cleaned up later.
 
-### Key Mapbox API patterns in the code
+### Key MapLibre API patterns in the code
 
 - Coordinates are always `[lng, lat]` order (GeoJSON standard) — never `[lat, lng]`
-- Vehicle markers: `new mapboxgl.Marker({element:el, anchor:'center'}).setLngLat([lng,lat]).addTo(map)`
-- Marker visibility tracked via `markersOnMap = new Set()` (no Leaflet `map.hasLayer`)
+- Vehicle markers: `new maplibregl.Marker({element:el, anchor:'center'}).setLngLat([lng,lat]).addTo(map)`
+- Marker visibility tracked via `markersOnMap = new Set()`
 - Route lines are GeoJSON sources/layers added after `map.once('load', ...)`
 - Journey route drawn as `'journey-route'` GeoJSON layer; dashed placeholder is `'journey-placeholder'`
 - `mapReady()` helper returns a Promise that resolves when `map.loaded()` is true
-- `map.fitBounds(new mapboxgl.LngLatBounds(...), {padding, maxZoom})`
+- `map.fitBounds(new maplibregl.LngLatBounds(...), {padding, maxZoom})`
 - `map.flyTo({center:[lng,lat], zoom, duration, essential:true})`
 - `map.panTo([lng,lat], {duration:0})` for follow mode
 
@@ -65,10 +66,11 @@ transit-live-app/
 ```
 TRANSIT_API_KEY=<key>   # Transport Victoria Open Data — opendata.transport.vic.gov.au
                         # Account must have GTFS-R product subscription
-MAPBOX_TOKEN=pk.<...>   # Mapbox public access token — injected into index.html at request time
 JWT_SECRET=<random>     # Secret for signing JWTs — CHANGE from default in production
 PORT=3000               # Optional, defaults to 3000
 ```
+
+> `MAPBOX_TOKEN` is no longer required — MapLibre GL JS needs no API token.
 
 ### Optional — Email Auth
 
@@ -200,22 +202,23 @@ Endpoints used by `/api/journey`:
 - Haversine distance calculations
 
 ### Frontend
-- **Mapbox GL JS v3.3.0** — 3D isometric view, pitch 45°, bearing -15°, custom style
-- `applyMapPalette()` runs on map load — iterates all style layers and enforces Mint/Turquoise/Cream via `setPaintProperty`
-- **Mapbox Search Box v1.5.0** — `<mapbox-search-box>` web component replaces custom search input; configured with AU country and Melbourne proximity; `retrieve` event triggers journey flow
+- **MapLibre GL JS v4** — 3D isometric view, pitch 45°, bearing -15°, style from `/styles/maplibre-style.json`
+- **PMTiles v3** — registered as a protocol at startup for serving vector tile archives
+- Fog set on `map.on('load')`: soft atmospheric haze (range [2,12], sky/horizon colors)
+- **Search removed** — `<mapbox-search-box>` element deleted; replacement TBD
 - Color-coded markers: Trains `#094c8d`, Trams `#f5a800`, Buses `#7b5ea7`, V/Line `#6c3483`
 - Custom face SVG markers per mode — expressions, route number labels, delay-red coloring
 - **Game-like marker animations:** `vm-bob` applies physics-based `drop-shadow` filter (tight at ground, spread when airborne); `vm-shadow` ground-shadow ellipse animates inversely to the bob; elastic spring hover jump
 - Smooth GPS interpolation between 15s updates — linear animation in the render loop
 - Route path animation: vehicles snap to PTV stop-sequence coordinates when a journey is active
-- Journey flow: Mapbox Search → destination pin (`mapboxgl.Marker`) → dashed placeholder GeoJSON line → fetch `/api/journey` → real polyline GeoJSON (`'journey-route'` layer) → `map.fitBounds`
+- Journey flow: destination pin (`maplibregl.Marker`) → dashed placeholder GeoJSON line → fetch `/api/journey` → real polyline GeoJSON (`'journey-route'` layer) → `map.fitBounds`
 - Journey Bottom Sheet (`#journey-bottom-sheet`) slides up from bottom — duration, departs, walk time, next stop, report button
 - Fuzzy vehicle matching in journey mode: exact `run_ref` → line name → 500m proximity → bearing fallback
 - Follow mode — `map.panTo` on every animation frame tick
 - Filter panel — toggle by mode, filter by route name
 - Vehicle detail sheet — route, delay, occupancy bar, follow button
 - Service alerts sheet
-- Myki inspector markers with `mapboxgl.Popup` vote UI
+- Myki inspector markers with `maplibregl.Popup` vote UI
 - Demo mode — animated fake vehicles on all 4 modes if live API unavailable
 - Email OTP sign-in UI — 6-digit code input with auto-focus, stored JWT
 - Avatar creator — SVG face with skin/hair/eyes/mouth/accessory/outfit swatches
