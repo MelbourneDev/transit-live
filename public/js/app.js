@@ -608,38 +608,20 @@ function makeInspectorSVG(){
 }
 
 // ── makeMarkerEl — returns a DOM element for maplibregl.Marker ───────────
-function getIconSz(){
-  const z = map.getZoom ? map.getZoom() : 14;
-  if(z >= 17) return 52;
-  if(z === 16) return 44;
-  if(z === 15) return 38;
-  if(z === 14) return 32;
-  if(z === 13) return 26;
-  if(z === 12) return 20;
-  if(z === 11) return 18; // zoom 11 → small face, not dot
-  return 14; // zoom ≤ 10 only → plain dot
-}
+const MARKER_SZ = 22; // fixed size — never changes with zoom, never turns into a dot
 
 function makeMarkerEl(v){
   const delayed = v.delay>2;
-  const sz = getIconSz();
+  const sz = MARKER_SZ;
   const color = MODE_COLOR[v.mode]||v.color||'#5b8dee';
   const glowCol = (delayed?'#ff6b6b':color)+'66';
   const seed = typeof v.id==='string'
     ? [...v.id].reduce((a,c)=>a+c.charCodeAt(0),0) : Number(v.id);
   const bobDelay = (seed*173)%2200;
-  const isDot = sz < 18; // only at zoom ≤ 10 (sz=14)
   const el = document.createElement('div');
-  if(isDot){
-    el.innerHTML=`<div class="vm-wrap" style="width:${sz}px;height:${sz+6}px">
-      <div class="vm-inner" style="animation-delay:${bobDelay}ms">
-        <div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${color};border:2px solid white"></div>
-      </div>
-      <div class="vm-shadow" style="animation-delay:${bobDelay}ms"></div>
-    </div>`;
-  } else {
+  {
     const pad=4; const sq=sz+pad;
-    const routeLabel = sz >= 32 ? getRouteLabel(v) : '';
+    const routeLabel = getRouteLabel(v);
     const svg=makeFaceSVG(v.mode,delayed,color,sz,routeLabel);
     el.innerHTML=`<div class="vm-wrap" style="width:${sq}px;height:${sq+8}px">
       <div class="vm-inner" style="animation-delay:${bobDelay}ms;filter:drop-shadow(0 2px 6px ${glowCol}) drop-shadow(0 3px 3px rgba(0,0,0,0.22))">
@@ -773,13 +755,6 @@ map.on('zoom',()=>{
       m.setLngLat([lng,lat]);
     } else if(m._v) m.setLngLat([m._v.lng,m._v.lat]);
   }
-  // Refresh icon sizes on zoom change
-  vehicles.forEach(v=>{
-    const m=markers[v.id]; if(m){
-      const newEl=makeMarkerEl(v);
-      m.getElement().innerHTML=newEl.innerHTML;
-    }
-  });
   applyFilters();
   updateNearestVehicle();
 });
@@ -1271,14 +1246,21 @@ function initSearch(){
   const typeIco = {train:'🚆',tram:'🚋',bus:'🚌',suburb:'🏘',station:'🚉',university:'🎓',hospital:'🏥'};
 
   function renderSuggestions(data){
-    results.innerHTML = data.map((l,i)=>`
-      <div class="addr-suggestion" data-i="${i}" data-lat="${l.lat}" data-lng="${l.lng}" data-name="${escHtml(l.name)}" data-type="${escHtml(l.type||'')}">
-        <span class="addr-sug-ico">${typeIco[l.type]||'📍'}</span>
+    results.innerHTML = data.map((l,i)=>{
+      // Nominatim display_name is "Main Name, suburb, city, state, postcode, Australia"
+      // Split on first comma: main = first part, sub = rest trimmed
+      const parts = l.name.split(',');
+      const main = parts[0].trim();
+      const sub  = parts.slice(1,3).map(s=>s.trim()).filter(Boolean).join(', ');
+      const ico  = typeIco[l.type]||'📍';
+      return `<div class="addr-suggestion" data-i="${i}" data-lat="${l.lat}" data-lng="${l.lng}" data-name="${escHtml(main)}">
+        <span class="addr-sug-ico">${ico}</span>
         <div>
-          <div class="addr-result-main">${escHtml(l.name)}</div>
-          <div class="addr-result-sub">${escHtml(l.type||'Location')}</div>
+          <div class="addr-result-main">${escHtml(main)}</div>
+          ${sub?`<div class="addr-result-sub">${escHtml(sub)}</div>`:''}
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     results.classList.add('show');
     results.querySelectorAll('.addr-suggestion').forEach(el=>{
       el.addEventListener('click', e=>{
@@ -1297,15 +1279,17 @@ function initSearch(){
     const q = input.value.trim();
     if(!q){ results.innerHTML=''; results.classList.remove('show'); return; }
     debounceTimer = setTimeout(async () => {
-      console.log('[Search] fetching autocomplete for:', q);
       try{
         const r = await fetch(`/api/journey/autocomplete?q=${encodeURIComponent(q)}`);
         const data = await r.json();
-        console.log('[Search] autocomplete results:', data.length, data);
-        if(!Array.isArray(data)||!data.length){ results.innerHTML=''; results.classList.remove('show'); return; }
+        if(!Array.isArray(data)||!data.length){
+          results.innerHTML='<div class="addr-no-results">No results found</div>';
+          results.classList.add('show');
+          return;
+        }
         renderSuggestions(data);
       }catch(e){ console.error('[Search] fetch error:', e); }
-    }, 220);
+    }, 300);
   });
 
   input.addEventListener('keydown', e=>{

@@ -243,20 +243,28 @@ function parseVehicles(posFeed, delays, mode) {
     const routeId    = normaliseRouteId(rawRouteId) || rawRouteId;
     const tripId     = vp.trip?.trip_id  || '';
     const delaySec   = delays[tripId] || 0;
-    const lineName   = LINE_NAMES[routeId] || LINE_NAMES[rawRouteId] || routeId || mode;
     const occupancy  = vp.occupancy_status != null ? vp.occupancy_status : null;
+    // Only use LINE_NAMES/LINE_COLORS lookup for train/vline — tram/bus numbers
+    // overlap with train line number keys (e.g. tram route "1" ≠ Belgrave)
+    const isRail = mode === 'train' || mode === 'vline';
+    const lineName = isRail
+      ? (LINE_NAMES[routeId] || LINE_NAMES[rawRouteId] || routeId || mode)
+      : (routeId || rawRouteId || mode);
+    const color = isRail
+      ? (LINE_COLORS[routeId] || LINE_COLORS[rawRouteId] || MODE_COLOR[mode])
+      : MODE_COLOR[mode];
     return [{
       id:       `${mode}_${e.id}`,
       mode,
       line:     lineName,
-      label:    (mode === 'train' || mode === 'vline')
+      label:    isRail
                   ? `${lineName} Line`
-                  : `${mode === 'tram' ? 'Tram' : 'Bus'} ${routeId}`,
+                  : `${mode === 'tram' ? 'Tram' : 'Bus'} ${routeId || lineName}`,
       dest:     '',
       lat, lng,
       bearing:  bearing  || 0,
       speed:    speed    || 0,
-      color:    LINE_COLORS[routeId] || LINE_COLORS[rawRouteId] || MODE_COLOR[mode],
+      color,
       delay:    Math.max(0, Math.round(delaySec / 60)),
       occupancy,
     }];
@@ -300,6 +308,15 @@ app.get('/api/vehicles', async (req, res) => {
     console.error('✗ All metro feeds failed:', err);
     return res.status(502).json({ error: err });
   }
+
+  // Log raw entity counts to help diagnose missing modes (0 = likely subscription issue)
+  const feedCounts = {
+    train: tp.status === 'fulfilled' ? (tp.value.entity || []).length : 'ERR',
+    tram:  mp.status === 'fulfilled' ? (mp.value.entity || []).length : 'ERR',
+    bus:   bp.status === 'fulfilled' ? (bp.value.entity || []).length : 'ERR',
+    vline: vp.status === 'fulfilled' ? (vp.value.entity || []).length : 'ERR',
+  };
+  console.log(`  Raw feed entities: trains:${feedCounts.train} trams:${feedCounts.tram} buses:${feedCounts.bus} vline:${feedCounts.vline}`);
 
   const vehicles = [
     ...(tp.status === 'fulfilled' ? parseVehicles(tp.value, tu.status === 'fulfilled' ? buildDelayMap(tu.value) : {}, 'train') : []),
@@ -400,146 +417,6 @@ async function ptvFetch(apiPath) {
   return res.json();
 }
 
-// Melbourne locations data — train stations + suburbs
-const MELBOURNE_LOCATIONS = [
-  // City Loop & major train stations
-  {name:'Flinders Street Station', lat:-37.8182, lng:144.9671, type:'train'},
-  {name:'Southern Cross Station',  lat:-37.8183, lng:144.9526, type:'train'},
-  {name:'Melbourne Central',       lat:-37.8098, lng:144.9631, type:'train'},
-  {name:'Flagstaff',               lat:-37.8116, lng:144.9572, type:'train'},
-  {name:'Parliament',              lat:-37.8114, lng:144.9730, type:'train'},
-  {name:'Richmond',                lat:-37.8244, lng:144.9987, type:'train'},
-  {name:'North Melbourne',         lat:-37.8047, lng:144.9426, type:'train'},
-  {name:'Footscray',               lat:-37.8019, lng:144.8993, type:'train'},
-  {name:'Caulfield',               lat:-37.8769, lng:145.0238, type:'train'},
-  {name:'Clayton',                 lat:-37.9210, lng:145.1202, type:'train'},
-  {name:'Box Hill',                lat:-37.8196, lng:145.1228, type:'train'},
-  {name:'Camberwell',              lat:-37.8274, lng:145.0588, type:'train'},
-  {name:'Dandenong',               lat:-37.9841, lng:145.2161, type:'train'},
-  {name:'Frankston',               lat:-38.1391, lng:145.1232, type:'train'},
-  {name:'Werribee',                lat:-37.9014, lng:144.6604, type:'train'},
-  {name:'Sunshine',                lat:-37.7871, lng:144.8310, type:'train'},
-  {name:'Broadmeadows',            lat:-37.6815, lng:144.9176, type:'train'},
-  {name:'Ringwood',                lat:-37.8116, lng:145.2276, type:'train'},
-  {name:'Belgrave',                lat:-37.9052, lng:145.3556, type:'train'},
-  {name:'Lilydale',                lat:-37.7578, lng:145.3568, type:'train'},
-  {name:'Glen Waverley',           lat:-37.8786, lng:145.1644, type:'train'},
-  {name:'Cranbourne',              lat:-38.1133, lng:145.3485, type:'train'},
-  {name:'Pakenham',                lat:-38.0724, lng:145.4897, type:'train'},
-  {name:'Sandringham',             lat:-37.9504, lng:145.0091, type:'train'},
-  {name:'Williamstown',            lat:-37.8640, lng:144.8950, type:'train'},
-  {name:'Sunbury',                 lat:-37.5774, lng:144.7275, type:'train'},
-  {name:'Craigieburn',             lat:-37.6025, lng:144.9463, type:'train'},
-  {name:'Upfield',                 lat:-37.6422, lng:144.9536, type:'train'},
-  {name:'Mernda',                  lat:-37.6012, lng:145.0886, type:'train'},
-  {name:'Hurstbridge',             lat:-37.6283, lng:145.1805, type:'train'},
-  {name:'Alamein',                 lat:-37.8518, lng:145.0981, type:'train'},
-  {name:'Flinders Street',         lat:-37.8182, lng:144.9671, type:'train'},
-  {name:'Spencer Street',          lat:-37.8183, lng:144.9526, type:'train'},
-  // Suburbs
-  {name:'St Kilda',                lat:-37.8649, lng:144.9785, type:'suburb'},
-  {name:'Fitzroy',                 lat:-37.7990, lng:144.9786, type:'suburb'},
-  {name:'Collingwood',             lat:-37.8037, lng:144.9924, type:'suburb'},
-  {name:'Richmond',                lat:-37.8244, lng:144.9987, type:'suburb'},
-  {name:'South Yarra',             lat:-37.8388, lng:144.9927, type:'suburb'},
-  {name:'Prahran',                 lat:-37.8479, lng:144.9924, type:'suburb'},
-  {name:'Toorak',                  lat:-37.8479, lng:145.0140, type:'suburb'},
-  {name:'Malvern',                 lat:-37.8601, lng:145.0270, type:'suburb'},
-  {name:'Elsternwick',             lat:-37.8887, lng:145.0027, type:'suburb'},
-  {name:'Glen Iris',               lat:-37.8631, lng:145.0452, type:'suburb'},
-  {name:'Hawthorn',                lat:-37.8228, lng:145.0280, type:'suburb'},
-  {name:'Kew',                     lat:-37.8073, lng:145.0330, type:'suburb'},
-  {name:'Doncaster',               lat:-37.7870, lng:145.1200, type:'suburb'},
-  {name:'Balwyn',                  lat:-37.8121, lng:145.0856, type:'suburb'},
-  {name:'Nunawading',              lat:-37.8209, lng:145.1726, type:'suburb'},
-  {name:'Mitcham',                 lat:-37.8145, lng:145.1946, type:'suburb'},
-  {name:'Croydon',                 lat:-37.7962, lng:145.2833, type:'suburb'},
-  {name:'Mooroolbark',             lat:-37.7756, lng:145.3046, type:'suburb'},
-  {name:'Boronia',                 lat:-37.8600, lng:145.2880, type:'suburb'},
-  {name:'Ferntree Gully',          lat:-37.8800, lng:145.2947, type:'suburb'},
-  {name:'Knox City',               lat:-37.8748, lng:145.2434, type:'suburb'},
-  {name:'Rowville',                lat:-37.9290, lng:145.2157, type:'suburb'},
-  {name:'Noble Park',              lat:-37.9671, lng:145.1718, type:'suburb'},
-  {name:'Springvale',              lat:-37.9481, lng:145.1474, type:'suburb'},
-  {name:'Cheltenham',              lat:-37.9607, lng:145.0590, type:'suburb'},
-  {name:'Mentone',                 lat:-37.9817, lng:145.0595, type:'suburb'},
-  {name:'Mordialloc',              lat:-38.0037, lng:145.0862, type:'suburb'},
-  {name:'Bonbeach',                lat:-38.0461, lng:145.1024, type:'suburb'},
-  {name:'Carrum',                  lat:-38.0671, lng:145.1219, type:'suburb'},
-  {name:'Seaford',                 lat:-38.0959, lng:145.1366, type:'suburb'},
-  {name:'Karingal',                lat:-38.1581, lng:145.1503, type:'suburb'},
-  {name:'Rosebud',                 lat:-38.3555, lng:144.9021, type:'suburb'},
-  {name:'Mornington',              lat:-38.2145, lng:145.0374, type:'suburb'},
-  {name:'Berwick',                 lat:-38.0353, lng:145.3553, type:'suburb'},
-  {name:'Narre Warren',            lat:-38.0280, lng:145.3048, type:'suburb'},
-  {name:'Hallam',                  lat:-37.9997, lng:145.2706, type:'suburb'},
-  {name:'Hampton Park',            lat:-38.0135, lng:145.2548, type:'suburb'},
-  {name:'Bayswater',               lat:-37.8455, lng:145.2698, type:'suburb'},
-  {name:'Wantirna',                lat:-37.8563, lng:145.2219, type:'suburb'},
-  {name:'Vermont',                 lat:-37.8345, lng:145.1887, type:'suburb'},
-  {name:'Doncaster East',          lat:-37.7889, lng:145.1502, type:'suburb'},
-  {name:'Templestowe',             lat:-37.7628, lng:145.1387, type:'suburb'},
-  {name:'Eltham',                  lat:-37.7143, lng:145.1480, type:'suburb'},
-  {name:'Diamond Creek',           lat:-37.6721, lng:145.1581, type:'suburb'},
-  {name:'Greensborough',           lat:-37.7046, lng:145.1030, type:'suburb'},
-  {name:'Bundoora',                lat:-37.7067, lng:145.0576, type:'suburb'},
-  {name:'Lalor',                   lat:-37.6727, lng:145.0180, type:'suburb'},
-  {name:'Thomastown',              lat:-37.6947, lng:145.0080, type:'suburb'},
-  {name:'Epping',                  lat:-37.6459, lng:145.0176, type:'suburb'},
-  {name:'South Morang',            lat:-37.6462, lng:145.0858, type:'suburb'},
-  {name:'Whittlesea',              lat:-37.5142, lng:145.1160, type:'suburb'},
-  {name:'Reservoir',               lat:-37.7181, lng:145.0028, type:'suburb'},
-  {name:'Preston',                 lat:-37.7422, lng:145.0020, type:'suburb'},
-  {name:'Northcote',               lat:-37.7681, lng:145.0042, type:'suburb'},
-  {name:'Brunswick',               lat:-37.7752, lng:144.9606, type:'suburb'},
-  {name:'Coburg',                  lat:-37.7430, lng:144.9649, type:'suburb'},
-  {name:'Pascoe Vale',             lat:-37.7298, lng:144.9469, type:'suburb'},
-  {name:'Glenroy',                 lat:-37.7131, lng:144.9257, type:'suburb'},
-  {name:'Fawkner',                 lat:-37.7131, lng:144.9640, type:'suburb'},
-  {name:'Campbellfield',           lat:-37.6717, lng:144.9613, type:'suburb'},
-  {name:'Roxburgh Park',           lat:-37.6462, lng:144.9260, type:'suburb'},
-  {name:'Essendon',                lat:-37.7514, lng:144.9145, type:'suburb'},
-  {name:'Moonee Ponds',            lat:-37.7670, lng:144.9228, type:'suburb'},
-  {name:'Ascot Vale',              lat:-37.7800, lng:144.9211, type:'suburb'},
-  {name:'Kensington',              lat:-37.7952, lng:144.9271, type:'suburb'},
-  {name:'Flemington',              lat:-37.7963, lng:144.9270, type:'suburb'},
-  {name:'Seddon',                  lat:-37.8121, lng:144.8876, type:'suburb'},
-  {name:'Yarraville',              lat:-37.8150, lng:144.8845, type:'suburb'},
-  {name:'Footscray',               lat:-37.8019, lng:144.8993, type:'suburb'},
-  {name:'Altona',                  lat:-37.8665, lng:144.8302, type:'suburb'},
-  {name:'Williamstown',            lat:-37.8640, lng:144.8950, type:'suburb'},
-  {name:'Newport',                 lat:-37.8440, lng:144.8788, type:'suburb'},
-  {name:'Laverton',                lat:-37.8568, lng:144.7693, type:'suburb'},
-  {name:'Hoppers Crossing',        lat:-37.8818, lng:144.7045, type:'suburb'},
-  {name:'Werribee',                lat:-37.9014, lng:144.6604, type:'suburb'},
-  {name:'Caroline Springs',        lat:-37.7520, lng:144.7420, type:'suburb'},
-  {name:'Tarneit',                 lat:-37.8542, lng:144.6926, type:'suburb'},
-  {name:'Truganina',               lat:-37.8402, lng:144.7434, type:'suburb'},
-  {name:'Deer Park',               lat:-37.7829, lng:144.7717, type:'suburb'},
-  {name:'St Albans',               lat:-37.7501, lng:144.8050, type:'suburb'},
-  {name:'Sydenham',                lat:-37.7286, lng:144.7620, type:'suburb'},
-  {name:'Albion',                  lat:-37.7720, lng:144.8450, type:'suburb'},
-  {name:'Docklands',               lat:-37.8181, lng:144.9433, type:'suburb'},
-  {name:'Port Melbourne',          lat:-37.8380, lng:144.9380, type:'suburb'},
-  {name:'Albert Park',             lat:-37.8484, lng:144.9539, type:'suburb'},
-  {name:'South Melbourne',         lat:-37.8380, lng:144.9522, type:'suburb'},
-  {name:'Melbourne Airport',       lat:-37.6690, lng:144.8410, type:'suburb'},
-  {name:'Tullamarine',             lat:-37.7069, lng:144.8805, type:'suburb'},
-  {name:'Westmeadows',             lat:-37.6878, lng:144.8745, type:'suburb'},
-  {name:'Melbourne CBD',           lat:-37.8136, lng:144.9631, type:'suburb'},
-  {name:'City Centre',             lat:-37.8136, lng:144.9631, type:'suburb'},
-  {name:'Elizabeth Street',        lat:-37.8136, lng:144.9629, type:'tram'},
-  {name:'Swanston Street',         lat:-37.8136, lng:144.9673, type:'tram'},
-  {name:'Collins Street',          lat:-37.8170, lng:144.9650, type:'tram'},
-  {name:'Bourke Street',           lat:-37.8130, lng:144.9650, type:'tram'},
-  // Tram terminus/key stops
-  {name:'St Kilda Beach',          lat:-37.8677, lng:144.9796, type:'tram'},
-  {name:'Luna Park',               lat:-37.8654, lng:144.9793, type:'tram'},
-  {name:'Melbourne Zoo',           lat:-37.7839, lng:144.9507, type:'tram'},
-  {name:'University of Melbourne', lat:-37.7963, lng:144.9614, type:'suburb'},
-  {name:'RMIT University',         lat:-37.8083, lng:144.9631, type:'suburb'},
-  {name:'Monash University',       lat:-37.9100, lng:145.1330, type:'suburb'},
-];
 
 // Haversine distance in km
 function haversine(lat1, lng1, lat2, lng2) {
@@ -551,208 +428,19 @@ function haversine(lat1, lng1, lat2, lng2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Fuzzy location search
-function findLocation(query) {
-  if (!query) return null;
-  const q = query.toLowerCase().trim();
-  // Exact match first
-  let loc = MELBOURNE_LOCATIONS.find(l => l.name.toLowerCase() === q);
-  if (loc) return loc;
-  // Starts-with
-  loc = MELBOURNE_LOCATIONS.find(l => l.name.toLowerCase().startsWith(q));
-  if (loc) return loc;
-  // Contains
-  loc = MELBOURNE_LOCATIONS.find(l => l.name.toLowerCase().includes(q));
-  if (loc) return loc;
-  return null;
-}
-
-// Routes data (mirrors frontend ROUTES for fallback journey planning)
-const ROUTES_DATA = [
-  {mode:'train', line:'Belgrave',     color:'#094c8d', pts:[[-37.8183,144.9671],[-37.8274,145.0118],[-37.8241,145.0585],[-37.8116,145.2276],[-37.8603,145.3556]]},
-  {mode:'train', line:'Glen Waverley',color:'#094c8d', pts:[[-37.8183,144.9671],[-37.8274,145.0118],[-37.8432,145.0693],[-37.8701,145.1146],[-37.8786,145.1644]]},
-  {mode:'train', line:'Lilydale',     color:'#094c8d', pts:[[-37.8183,144.9671],[-37.8274,145.0118],[-37.8241,145.0585],[-37.8116,145.2276],[-37.7578,145.3568]]},
-  {mode:'train', line:'Alamein',      color:'#094c8d', pts:[[-37.8183,144.9671],[-37.8274,145.0118],[-37.8241,145.0585],[-37.8381,145.0769],[-37.8518,145.0981]]},
-  {mode:'train', line:'Frankston',    color:'#159943', pts:[[-37.8183,144.9671],[-37.8388,144.9927],[-37.8769,145.0238],[-37.9210,145.0740],[-37.9710,145.0942],[-38.1391,145.1232]]},
-  {mode:'train', line:'Cranbourne',   color:'#8b1a4a', pts:[[-37.8183,144.9671],[-37.8388,144.9927],[-37.8769,145.0238],[-37.9841,145.1282],[-38.0652,145.2847],[-38.1133,145.3485]]},
-  {mode:'train', line:'Pakenham',     color:'#8b1a4a', pts:[[-37.8183,144.9671],[-37.8388,144.9927],[-37.8769,145.0238],[-37.9841,145.1282],[-38.0480,145.3956],[-38.0724,145.4897]]},
-  {mode:'train', line:'Sandringham',  color:'#f178af', pts:[[-37.8183,144.9671],[-37.8388,144.9927],[-37.8769,145.0238],[-37.9090,144.9980],[-37.9504,145.0091]]},
-  {mode:'train', line:'Werribee',     color:'#159943', pts:[[-37.8183,144.9671],[-37.8047,144.9426],[-37.8440,144.8788],[-37.8671,144.7769],[-37.9014,144.6604]]},
-  {mode:'train', line:'Williamstown', color:'#159943', pts:[[-37.8183,144.9671],[-37.8047,144.9426],[-37.8440,144.8788],[-37.8640,144.8950]]},
-  {mode:'train', line:'Sunbury',      color:'#fc7f1e', pts:[[-37.8183,144.9671],[-37.8183,144.9526],[-37.7994,144.9293],[-37.7871,144.8310],[-37.5774,144.7275]]},
-  {mode:'train', line:'Craigieburn',  color:'#fc7f1e', pts:[[-37.8183,144.9671],[-37.8047,144.9426],[-37.7994,144.9293],[-37.6815,144.9176],[-37.6025,144.9463]]},
-  {mode:'train', line:'Upfield',      color:'#fc7f1e', pts:[[-37.8183,144.9671],[-37.8047,144.9426],[-37.7994,144.9293],[-37.7407,144.9641],[-37.6422,144.9536]]},
-  {mode:'train', line:'Mernda',       color:'#e1261c', pts:[[-37.8183,144.9671],[-37.7921,144.9987],[-37.7596,145.0285],[-37.7096,145.0535],[-37.6012,145.0886]]},
-  {mode:'train', line:'Hurstbridge',  color:'#e1261c', pts:[[-37.8183,144.9671],[-37.7921,144.9987],[-37.7596,145.0285],[-37.7096,145.0535],[-37.6795,145.1545],[-37.6283,145.1805]]},
-  {mode:'tram',  line:'Route 96',     color:'#f5a800', pts:[[-37.8649,144.9785],[-37.8388,144.9800],[-37.8183,144.9671],[-37.8094,144.9671],[-37.7751,144.9789]]},
-  {mode:'tram',  line:'Route 19',     color:'#00b5e2', pts:[[-37.7320,144.9601],[-37.7720,144.9630],[-37.8094,144.9671],[-37.8183,144.9671]]},
-  {mode:'tram',  line:'Route 86',     color:'#f5a800', pts:[[-37.7087,145.0148],[-37.7610,144.9850],[-37.8070,144.9810],[-37.8183,144.9671]]},
-  {mode:'tram',  line:'Route 57',     color:'#00b5e2', pts:[[-37.7628,144.8845],[-37.8000,144.9220],[-37.8140,144.9526],[-37.8183,144.9671]]},
-  {mode:'tram',  line:'Route 48',     color:'#00b5e2', pts:[[-37.8085,145.0570],[-37.8094,145.0290],[-37.8094,144.9730],[-37.8094,144.9430]]},
-  {mode:'tram',  line:'Route 70',     color:'#e1261c', pts:[[-37.8214,144.9443],[-37.8183,144.9671],[-37.8230,144.9921],[-37.8390,145.0760]]},
-  {mode:'tram',  line:'Route 109',    color:'#e1261c', pts:[[-37.8183,144.9526],[-37.8183,144.9671],[-37.8280,145.0280],[-37.8280,145.1000]]},
-  {mode:'tram',  line:'Route 112',    color:'#f5a800', pts:[[-37.7455,144.9777],[-37.7950,144.9700],[-37.8094,144.9671],[-37.8390,144.9671]]},
-  {mode:'tram',  line:'Route 1',      color:'#78be20', pts:[[-37.8700,144.9580],[-37.8300,144.9666],[-37.8183,144.9671],[-37.7894,144.9698]]},
-  {mode:'tram',  line:'Route 75',     color:'#e1261c', pts:[[-37.8630,145.1210],[-37.8290,145.0240],[-37.8183,144.9730],[-37.8183,144.9526]]},
-  {mode:'tram',  line:'Route 59',     color:'#00b5e2', pts:[[-37.7220,144.8830],[-37.7720,144.9170],[-37.8094,144.9526]]},
-  {mode:'bus',   line:'Route 246',    color:'#7b5ea7', pts:[[-37.8000,144.9580],[-37.8140,144.9350],[-37.8280,144.9100]]},
-  {mode:'bus',   line:'Route 605',    color:'#009b77', pts:[[-37.8094,144.9629],[-37.7750,145.0450],[-37.7930,145.1218]]},
-  {mode:'bus',   line:'Route 750',    color:'#009b77', pts:[[-37.8769,145.0238],[-37.9050,145.1100],[-37.9250,145.1650]]},
-  {mode:'bus',   line:'Route 901',    color:'#d4a017', pts:[[-37.8769,145.0238],[-37.9841,145.1282],[-38.1145,145.1212]]},
-  {mode:'bus',   line:'Route 902',    color:'#d4a017', pts:[[-37.7839,144.8781],[-37.8794,144.8608],[-37.9301,144.8952]]},
-  {mode:'bus',   line:'Route 903',    color:'#d4a017', pts:[[-37.7839,144.8781],[-37.8769,145.0238],[-37.9841,145.1282]]},
-  {mode:'bus',   line:'Route 302',    color:'#7b5ea7', pts:[[-37.8183,144.9671],[-37.8183,145.0500],[-37.8182,145.1428]]},
-  {mode:'bus',   line:'Route 401',    color:'#7b5ea7', pts:[[-37.8183,144.9671],[-37.8600,144.9840],[-37.8769,145.0238]]},
-];
-
-// Find routes passing within 2km of a point
-function findNearbyRoutes(lat, lng) {
-  const nearby = [];
-  for (const route of ROUTES_DATA) {
-    let minDist = Infinity;
-    for (const [rlat, rlng] of route.pts) {
-      const d = haversine(lat, lng, rlat, rlng);
-      if (d < minDist) minDist = d;
-    }
-    if (minDist <= 2.0) {
-      nearby.push({ ...route, distKm: Math.round(minDist * 100) / 100 });
-    }
-  }
-  nearby.sort((a, b) => a.distKm - b.distKm);
-  return nearby.slice(0, 5);
-}
-
-// Clip a route's pts array to the segment between fromLoc and toLoc
-function clipRoutePath(route, fromLat, fromLng, toLat, toLng) {
-  const pts = route.pts;
-  if (!pts || pts.length < 2) return [[fromLat, fromLng], [toLat, toLng]];
-  let fi = 0, fd = Infinity, ti = 0, td = Infinity;
-  pts.forEach((p, i) => {
-    const df = (p[0] - fromLat) ** 2 + (p[1] - fromLng) ** 2;
-    const dt = (p[0] - toLat)   ** 2 + (p[1] - toLng)   ** 2;
-    if (df < fd) { fd = df; fi = i; }
-    if (dt < td) { td = dt; ti = i; }
-  });
-  if (fi === ti) return [[fromLat, fromLng], [toLat, toLng]];
-  const seg = fi < ti
-    ? pts.slice(fi, ti + 1)
-    : [...pts.slice(ti, fi + 1)].reverse();
-  return [[fromLat, fromLng], ...seg.slice(1, -1), [toLat, toLng]];
-}
-
-// Build fallback journey options
-function buildFallbackJourneys(fromLoc, toLoc) {
-  const fromRoutes = findNearbyRoutes(fromLoc.lat, fromLoc.lng);
-  const toRoutes   = findNearbyRoutes(toLoc.lat, toLoc.lng);
-  const directKm   = haversine(fromLoc.lat, fromLoc.lng, toLoc.lat, toLoc.lng);
-  const directMin  = Math.round(directKm / 5 * 60);
-  const nowStr     = new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' });
-
-  const journeys = [];
-
-  // Option 1: Direct transport if shared route exists
-  const sharedRoutes = fromRoutes.filter(r => toRoutes.some(tr => tr.line === r.line));
-  if (sharedRoutes.length > 0) {
-    const r = sharedRoutes[0];
-    const transitMin = Math.max(5, Math.round(directKm / (r.mode === 'train' ? 60 : r.mode === 'tram' ? 25 : 30) * 60));
-    journeys.push({
-      duration: transitMin + 5,
-      transfers: 0,
-      legs: [
-        { type: 'walk', from: fromLoc.name, to: 'Nearby stop', duration: 3 },
-        {
-          type: r.mode, line: r.line, color: r.color,
-          from: fromLoc.name, to: toLoc.name, duration: transitMin,
-          depart: nowStr, minsUntilDep: 2,
-          routePath: clipRoutePath(r, fromLoc.lat, fromLoc.lng, toLoc.lat, toLoc.lng),
-        },
-        { type: 'walk', from: 'Nearby stop', to: toLoc.name, duration: 2 },
-      ],
-    });
-  }
-
-  // Option 2: Transfer via city if different zones
-  if (fromRoutes.length > 0 && toRoutes.length > 0 && sharedRoutes.length === 0) {
-    const r1 = fromRoutes[0];
-    const r2 = toRoutes[0];
-    const leg1Min = Math.round(haversine(fromLoc.lat, fromLoc.lng, -37.8183, 144.9671) / (r1.mode === 'train' ? 60 : 25) * 60) + 3;
-    const leg2Min = Math.round(haversine(-37.8183, 144.9671, toLoc.lat, toLoc.lng) / (r2.mode === 'train' ? 60 : 25) * 60) + 3;
-    journeys.push({
-      duration: leg1Min + leg2Min + 8,
-      transfers: 1,
-      legs: [
-        { type: 'walk', from: fromLoc.name, to: 'Nearby stop', duration: 3 },
-        {
-          type: r1.mode, line: r1.line, color: r1.color,
-          from: fromLoc.name, to: 'City', duration: leg1Min,
-          depart: nowStr, minsUntilDep: 2,
-          routePath: clipRoutePath(r1, fromLoc.lat, fromLoc.lng, -37.8183, 144.9671),
-        },
-        { type: 'walk', from: 'City', to: 'Transfer stop', duration: 5 },
-        {
-          type: r2.mode, line: r2.line, color: r2.color,
-          from: 'City', to: toLoc.name, duration: leg2Min,
-          depart: nowStr, minsUntilDep: leg1Min + 5,
-          routePath: clipRoutePath(r2, -37.8183, 144.9671, toLoc.lat, toLoc.lng),
-        },
-        { type: 'walk', from: 'Nearby stop', to: toLoc.name, duration: 2 },
-      ],
-    });
-  }
-
-  // Option 3: Walking (if under 3km)
-  if (directKm <= 3) {
-    journeys.push({
-      duration: directMin,
-      transfers: 0,
-      legs: [
-        { type: 'walk', from: fromLoc.name, to: toLoc.name, duration: directMin },
-      ],
-    });
-  }
-
-  if (journeys.length === 0) {
-    const r = fromRoutes[0] || { mode: 'tram', line: 'Route 96', color: '#f5a800', pts: [] };
-    journeys.push({
-      duration: Math.round(directKm / 20 * 60) + 10,
-      transfers: 1,
-      legs: [
-        { type: 'walk', from: fromLoc.name, to: 'Nearest stop', duration: 5 },
-        {
-          type: r.mode, line: r.line, color: r.color,
-          from: fromLoc.name, to: toLoc.name,
-          duration: Math.round(directKm / 20 * 60),
-          depart: nowStr, minsUntilDep: 5,
-          routePath: clipRoutePath(r, fromLoc.lat, fromLoc.lng, toLoc.lat, toLoc.lng),
-        },
-        { type: 'walk', from: 'Stop', to: toLoc.name, duration: 3 },
-      ],
-    });
-  }
-
-  return journeys.slice(0, 3);
-}
 
 // ── POST /api/journey ─────────────────────────────────────────────────────────
-// Accepts: { fromLat, fromLng, toLat, toLng, time? }  (preferred — coordinates direct from Photon)
-//      or: { from, to, time }  (legacy name-based, falls back to hardcoded locations)
+// Accepts: { fromLat, fromLng, toLat, toLng, fromName?, toName? }
 app.post('/api/journey', async (req, res) => {
   const { from, to, time } = req.body || {};
   let { fromLat, fromLng, toLat, toLng } = req.body || {};
 
-  // Accept either coordinate input or name-based input
+  // Require coordinate input
   if (fromLat && fromLng && toLat && toLng) {
     fromLat = parseFloat(fromLat); fromLng = parseFloat(fromLng);
     toLat   = parseFloat(toLat);   toLng   = parseFloat(toLng);
-  } else if (from && to) {
-    const fromLoc = findLocation(from);
-    const toLoc   = findLocation(to);
-    if (!fromLoc) return res.status(404).json({ error: `Location not found: ${from}` });
-    if (!toLoc)   return res.status(404).json({ error: `Location not found: ${to}` });
-    fromLat = fromLoc.lat; fromLng = fromLoc.lng;
-    toLat   = toLoc.lat;   toLng   = toLoc.lng;
   } else {
-    return res.status(400).json({ error: 'Provide fromLat/fromLng/toLat/toLng or from/to names' });
+    return res.status(400).json({ error: 'Provide fromLat/fromLng/toLat/toLng' });
   }
 
   const fromName = req.body.fromName || from || `${fromLat.toFixed(4)},${fromLng.toFixed(4)}`;
@@ -904,22 +592,31 @@ app.post('/api/journey', async (req, res) => {
     }
   }
 
-  // ── Fallback: hardcoded route geometry ────────────────────────────────
-  const fromLoc = { lat: fromLat, lng: fromLng, name: fromName };
-  const toLoc   = { lat: toLat,   lng: toLng,   name: toName };
-  const journeys = buildFallbackJourneys(fromLoc, toLoc);
-  res.json({ mode: 'fallback', from: fromLoc, to: toLoc, journeys });
+  // ── Fallback: no PTV keys configured ──────────────────────────────────
+  res.json({
+    mode: 'fallback',
+    from: { lat: fromLat, lng: fromLng, name: fromName },
+    to:   { lat: toLat,   lng: toLng,   name: toName },
+    journeys: [],
+  });
 });
 
 // ── GET /api/journey/autocomplete?q=X ────────────────────────────────────────
-app.get('/api/journey/autocomplete', (req, res) => {
-  const q = (req.query.q || '').toLowerCase().trim();
+app.get('/api/journey/autocomplete', async (req, res) => {
+  const q = (req.query.q || '').trim();
   if (!q) return res.json([]);
-  const results = MELBOURNE_LOCATIONS
-    .filter(l => l.name.toLowerCase().includes(q))
-    .slice(0, 8)
-    .map(l => ({ name: l.name, type: l.type, lat: l.lat, lng: l.lng }));
-  res.json(results);
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&countrycodes=au&viewbox=144.5,-38.5,145.8,-37.3&bounded=1&limit=6&format=json`;
+    const r = await fetch(url, { headers: { 'User-Agent': 'Transit-Live-Melbourne/1.0' } });
+    const data = await r.json();
+    res.json(data.map(item => ({
+      name: item.display_name,
+      lat: parseFloat(item.lat),
+      lng: parseFloat(item.lon),
+    })));
+  } catch (e) {
+    res.json([]);
+  }
 });
 
 // ── GET /api/stops/nearby?lat=X&lng=Y ────────────────────────────────────────
@@ -927,18 +624,7 @@ app.get('/api/stops/nearby', (req, res) => {
   const lat = parseFloat(req.query.lat);
   const lng = parseFloat(req.query.lng);
   if (isNaN(lat) || isNaN(lng)) return res.status(400).json({ error: 'lat and lng required' });
-
-  const stops = MELBOURNE_LOCATIONS
-    .map(loc => {
-      const distKm = haversine(lat, lng, loc.lat, loc.lng);
-      const walkMin = Math.round(distKm / 5 * 60);
-      return { ...loc, distKm: Math.round(distKm * 100) / 100, walkMin };
-    })
-    .filter(s => s.distKm <= 1.0)
-    .sort((a, b) => a.distKm - b.distKm)
-    .slice(0, 5);
-
-  res.json(stops);
+  res.json([]);
 });
 
 // ── GET /api/departures?stopName=X ───────────────────────────────────────────
