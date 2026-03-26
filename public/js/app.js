@@ -206,11 +206,13 @@ map.on('load', () => {
 // Track which marker IDs are currently added to the map
 const markersOnMap = new Set();
 
-// Returns a promise that resolves when the Mapbox map is fully loaded
+// Returns a promise that resolves when the map is fully loaded (5s timeout)
 function mapReady(){
   return new Promise(resolve=>{
-    if(map.loaded()) resolve();
-    else map.once('load', resolve);
+    if(map.loaded()){ resolve(); return; }
+    const done = () => { clearTimeout(t); resolve(); };
+    const t = setTimeout(done, 5000);
+    map.once('load', done);
   });
 }
 
@@ -319,7 +321,8 @@ function startLocationWatch(){
     placeUserPin(lat,lng);
     updateNearestVehicle();
     if(destLoc && !journeyPolyline) updateJourneyLine();
-  },{enableHighAccuracy:true,maximumAge:5000,timeout:15000});
+  }, err=>console.warn('Watch error:', err.message),
+  {enableHighAccuracy:true,maximumAge:5000,timeout:15000});
 }
 
 function flyToUser(){
@@ -1164,68 +1167,63 @@ function tickDemo(){
 function hideLoader(){ document.getElementById('loader')?.classList.add('out'); }
 
 async function init(){
-  // Guaranteed loader hide — no matter what happens below
-  const loaderGuard = setTimeout(hideLoader, 7000);
+  // DOM-only setup — no map dependency
+  loadAvatar();
+  loadGhostMode();
+  buildFilterPanel();
+  initSearch();
 
-  try {
-    loadAvatar();
-    loadGhostMode();
-    buildFilterPanel();
-
-    // Wait for Mapbox map to load before adding markers/sources
-    await mapReady();
-    buildStations();
-
-    // Geolocation — initial fix then continuous watch
-    const loc = await locateUser();
-    if(loc){
-      userLoc=loc;
-      document.getElementById('ld-title').textContent='Found you! 🎉';
-      document.getElementById('ld-sub').textContent='Loading transit data...';
-      await new Promise(r=>setTimeout(r,600));
-      map.jumpTo({center:[loc.lng,loc.lat],zoom:14});
-      try { placeUserPin(loc.lat,loc.lng); } catch(e){ console.warn('Pin error:',e); }
-    } else {
-      document.getElementById('sb-nearest').textContent='📍 Enable location for nearby info';
-    }
-    try { startLocationWatch(); } catch(e){ console.warn('Watch error:',e); }
-    initSearch();
-  } catch(e){ console.error('Init error:',e); }
-
-  // Hide loader once map is ready
-  clearTimeout(loaderGuard);
-  mapReady().then(()=>setTimeout(hideLoader,300));
-  // Fallback in case map takes too long
-  setTimeout(hideLoader, 1500);
-
-  // Demo
-  vehicles=spawnDemo();
+  // Spawn demo vehicles immediately — maplibregl.Marker works before map load
+  vehicles = spawnDemo();
   vehicles.forEach(upsert);
   updateCounts(vehicles);
-  lastUpdate=Date.now();
-  demoTimer=setInterval(tickDemo,1400);
+  lastUpdate = Date.now();
+  demoTimer = setInterval(tickDemo, 1400);
 
   fetchAlerts();
   fetchInspectors();
-  setInterval(fetchInspectors,60000);
+  setInterval(fetchInspectors, 60000);
 
-  const live=await fetchLive();
+  // Kick off live fetch without blocking
+  const livePromise = fetchLive();
+
+  // Map-specific setup — waits for load but has a 5s timeout so it never hangs
+  try {
+    await mapReady();
+    buildStations();
+
+    const loc = await locateUser();
+    if(loc){
+      userLoc = loc;
+      document.getElementById('ld-title').textContent = 'Found you! 🎉';
+      document.getElementById('ld-sub').textContent = 'Loading transit data...';
+      await new Promise(r=>setTimeout(r,600));
+      map.jumpTo({center:[loc.lng,loc.lat], zoom:14});
+      try { placeUserPin(loc.lat,loc.lng); } catch(e){ console.warn('Pin error:',e); }
+    } else {
+      document.getElementById('sb-nearest').textContent = '📍 Enable location for nearby info';
+    }
+    try { startLocationWatch(); } catch(e){ console.warn('Watch error:',e); }
+  } catch(e){ console.error('Init map error:',e); }
+
+  setTimeout(hideLoader, 1500);
+
+  const live = await livePromise;
   if(live){
-    setInterval(fetchLive,REFRESH_MS);
-    setInterval(fetchAlerts,120000);
+    setInterval(fetchLive, REFRESH_MS);
+    setInterval(fetchAlerts, 120000);
   } else {
-    document.getElementById('mode-badge').className='mode-badge demo';
-    document.getElementById('mode-text').textContent='DEMO';
+    document.getElementById('mode-badge').className = 'mode-badge demo';
+    document.getElementById('mode-text').textContent = 'DEMO';
     setInterval(async()=>{
       if(!isLive){
-        const ok=await fetchLive();
-        if(ok){setInterval(fetchLive,REFRESH_MS);setInterval(fetchAlerts,120000);}
+        const ok = await fetchLive();
+        if(ok){ setInterval(fetchLive,REFRESH_MS); setInterval(fetchAlerts,120000); }
       }
-    },30000);
+    }, 30000);
   }
 
-  // Onboarding
-  if(!localStorage.getItem('tl-onboarded')) setTimeout(showOnboarding,800);
+  if(!localStorage.getItem('tl-onboarded')) setTimeout(showOnboarding, 800);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1249,34 +1247,41 @@ function initSearch(){
 
   let debounceTimer = null;
 
+  const typeIco = {train:'🚆',tram:'🚋',bus:'🚌',suburb:'🏘',station:'🚉',university:'🎓',hospital:'🏥'};
+
+  function renderSuggestions(data){
+    results.innerHTML = data.map((l,i)=>`
+      <div class="addr-suggestion" data-i="${i}" data-lat="${l.lat}" data-lng="${l.lng}" data-name="${escHtml(l.name)}" data-type="${escHtml(l.type||'')}">
+        <span class="addr-sug-ico">${typeIco[l.type]||'📍'}</span>
+        <div>
+          <div class="addr-result-main">${escHtml(l.name)}</div>
+          <div class="addr-result-sub">${escHtml(l.type||'Location')}</div>
+        </div>
+      </div>`).join('');
+    results.classList.add('show');
+    results.querySelectorAll('.addr-suggestion').forEach(el=>{
+      el.addEventListener('click', e=>{
+        e.stopPropagation();
+        const lat = parseFloat(el.dataset.lat);
+        const lng = parseFloat(el.dataset.lng);
+        const name = el.dataset.name;
+        clearAddrSearch();
+        selectAddrResult(lat, lng, name, name);
+      });
+    });
+  }
+
   input.addEventListener('input', () => {
     clearTimeout(debounceTimer);
     const q = input.value.trim();
     if(!q){ results.innerHTML=''; results.classList.remove('show'); return; }
     debounceTimer = setTimeout(async () => {
       try{
-        const data = await fetch(`/api/journey/autocomplete?q=${encodeURIComponent(q)}`).then(r=>r.json());
-        if(!data.length){ results.innerHTML=''; results.classList.remove('show'); return; }
-        const typeIco = {train:'🚆',tram:'🚋',bus:'🚌',suburb:'🏘',station:'🚉',university:'🎓',hospital:'🏥'};
-        results.innerHTML = data.map((l,i)=>`
-          <div class="addr-suggestion" data-i="${i}" data-lat="${l.lat}" data-lng="${l.lng}" data-name="${escHtml(l.name)}" data-type="${escHtml(l.type||'')}">
-            <span class="addr-sug-ico">${typeIco[l.type]||'📍'}</span>
-            <div>
-              <div class="addr-result-main">${escHtml(l.name)}</div>
-              <div class="addr-result-sub">${escHtml(l.type||'Location')}</div>
-            </div>
-          </div>`).join('');
-        results.classList.add('show');
-        results.querySelectorAll('.addr-suggestion').forEach(el=>{
-          el.addEventListener('click', ()=>{
-            const lat = parseFloat(el.dataset.lat);
-            const lng = parseFloat(el.dataset.lng);
-            const name = el.dataset.name;
-            clearAddrSearch();
-            selectAddrResult(lat, lng, name, name);
-          });
-        });
-      }catch(e){}
+        const r = await fetch(`/api/journey/autocomplete?q=${encodeURIComponent(q)}`);
+        const data = await r.json();
+        if(!Array.isArray(data)||!data.length){ results.innerHTML=''; results.classList.remove('show'); return; }
+        renderSuggestions(data);
+      }catch(e){ console.error('[Search]', e); }
     }, 220);
   });
 
@@ -1907,9 +1912,8 @@ function updateHeaderAuth(){
 async function initAuth(){
   const token = getAuthToken();
   if(!token){
-    // No stored token — always show sign-in screen
+    // No stored token — show sign-in button but don't block the UI
     updateHeaderAuth();
-    openAuth();
     return;
   }
   // Validate stored token against server
