@@ -51,7 +51,8 @@ function authMiddleware(req, res, next) {
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static files but NOT index.html — that's served dynamically with token injection
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // ── Inline GTFS-RT protobuf schema ───────────────────────────────────────────
 const PROTO = `
@@ -621,12 +622,31 @@ function findNearbyRoutes(lat, lng) {
   return nearby.slice(0, 5);
 }
 
+// Clip a route's pts array to the segment between fromLoc and toLoc
+function clipRoutePath(route, fromLat, fromLng, toLat, toLng) {
+  const pts = route.pts;
+  if (!pts || pts.length < 2) return [[fromLat, fromLng], [toLat, toLng]];
+  let fi = 0, fd = Infinity, ti = 0, td = Infinity;
+  pts.forEach((p, i) => {
+    const df = (p[0] - fromLat) ** 2 + (p[1] - fromLng) ** 2;
+    const dt = (p[0] - toLat)   ** 2 + (p[1] - toLng)   ** 2;
+    if (df < fd) { fd = df; fi = i; }
+    if (dt < td) { td = dt; ti = i; }
+  });
+  if (fi === ti) return [[fromLat, fromLng], [toLat, toLng]];
+  const seg = fi < ti
+    ? pts.slice(fi, ti + 1)
+    : [...pts.slice(ti, fi + 1)].reverse();
+  return [[fromLat, fromLng], ...seg.slice(1, -1), [toLat, toLng]];
+}
+
 // Build fallback journey options
 function buildFallbackJourneys(fromLoc, toLoc) {
   const fromRoutes = findNearbyRoutes(fromLoc.lat, fromLoc.lng);
   const toRoutes   = findNearbyRoutes(toLoc.lat, toLoc.lng);
   const directKm   = haversine(fromLoc.lat, fromLoc.lng, toLoc.lat, toLoc.lng);
-  const directMin  = Math.round(directKm / 5 * 60); // walking at 5 km/h
+  const directMin  = Math.round(directKm / 5 * 60);
+  const nowStr     = new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' });
 
   const journeys = [];
 
@@ -640,7 +660,12 @@ function buildFallbackJourneys(fromLoc, toLoc) {
       transfers: 0,
       legs: [
         { type: 'walk', from: fromLoc.name, to: 'Nearby stop', duration: 3 },
-        { type: r.mode, line: r.line, color: r.color, from: fromLoc.name, to: toLoc.name, duration: transitMin },
+        {
+          type: r.mode, line: r.line, color: r.color,
+          from: fromLoc.name, to: toLoc.name, duration: transitMin,
+          depart: nowStr, minsUntilDep: 2,
+          routePath: clipRoutePath(r, fromLoc.lat, fromLoc.lng, toLoc.lat, toLoc.lng),
+        },
         { type: 'walk', from: 'Nearby stop', to: toLoc.name, duration: 2 },
       ],
     });
@@ -657,9 +682,19 @@ function buildFallbackJourneys(fromLoc, toLoc) {
       transfers: 1,
       legs: [
         { type: 'walk', from: fromLoc.name, to: 'Nearby stop', duration: 3 },
-        { type: r1.mode, line: r1.line, color: r1.color, from: fromLoc.name, to: 'City', duration: leg1Min },
+        {
+          type: r1.mode, line: r1.line, color: r1.color,
+          from: fromLoc.name, to: 'City', duration: leg1Min,
+          depart: nowStr, minsUntilDep: 2,
+          routePath: clipRoutePath(r1, fromLoc.lat, fromLoc.lng, -37.8183, 144.9671),
+        },
         { type: 'walk', from: 'City', to: 'Transfer stop', duration: 5 },
-        { type: r2.mode, line: r2.line, color: r2.color, from: 'City', to: toLoc.name, duration: leg2Min },
+        {
+          type: r2.mode, line: r2.line, color: r2.color,
+          from: 'City', to: toLoc.name, duration: leg2Min,
+          depart: nowStr, minsUntilDep: leg1Min + 5,
+          routePath: clipRoutePath(r2, -37.8183, 144.9671, toLoc.lat, toLoc.lng),
+        },
         { type: 'walk', from: 'Nearby stop', to: toLoc.name, duration: 2 },
       ],
     });
@@ -677,14 +712,19 @@ function buildFallbackJourneys(fromLoc, toLoc) {
   }
 
   if (journeys.length === 0) {
-    // Fallback: always show a suggestion
-    const r = fromRoutes[0] || { mode: 'tram', line: 'Route 96', color: '#f5a800' };
+    const r = fromRoutes[0] || { mode: 'tram', line: 'Route 96', color: '#f5a800', pts: [] };
     journeys.push({
       duration: Math.round(directKm / 20 * 60) + 10,
       transfers: 1,
       legs: [
         { type: 'walk', from: fromLoc.name, to: 'Nearest stop', duration: 5 },
-        { type: r.mode, line: r.line, color: r.color, from: fromLoc.name, to: toLoc.name, duration: Math.round(directKm / 20 * 60) },
+        {
+          type: r.mode, line: r.line, color: r.color,
+          from: fromLoc.name, to: toLoc.name,
+          duration: Math.round(directKm / 20 * 60),
+          depart: nowStr, minsUntilDep: 5,
+          routePath: clipRoutePath(r, fromLoc.lat, fromLoc.lng, toLoc.lat, toLoc.lng),
+        },
         { type: 'walk', from: 'Stop', to: toLoc.name, duration: 3 },
       ],
     });
@@ -694,74 +734,179 @@ function buildFallbackJourneys(fromLoc, toLoc) {
 }
 
 // ── POST /api/journey ─────────────────────────────────────────────────────────
+// Accepts: { fromLat, fromLng, toLat, toLng, time? }  (preferred — coordinates direct from Photon)
+//      or: { from, to, time }  (legacy name-based, falls back to hardcoded locations)
 app.post('/api/journey', async (req, res) => {
   const { from, to, time } = req.body || {};
-  if (!from || !to) return res.status(400).json({ error: 'from and to required' });
+  let { fromLat, fromLng, toLat, toLng } = req.body || {};
 
-  const fromLoc = findLocation(from);
-  const toLoc   = findLocation(to);
+  // Accept either coordinate input or name-based input
+  if (fromLat && fromLng && toLat && toLng) {
+    fromLat = parseFloat(fromLat); fromLng = parseFloat(fromLng);
+    toLat   = parseFloat(toLat);   toLng   = parseFloat(toLng);
+  } else if (from && to) {
+    const fromLoc = findLocation(from);
+    const toLoc   = findLocation(to);
+    if (!fromLoc) return res.status(404).json({ error: `Location not found: ${from}` });
+    if (!toLoc)   return res.status(404).json({ error: `Location not found: ${to}` });
+    fromLat = fromLoc.lat; fromLng = fromLoc.lng;
+    toLat   = toLoc.lat;   toLng   = toLoc.lng;
+  } else {
+    return res.status(400).json({ error: 'Provide fromLat/fromLng/toLat/toLng or from/to names' });
+  }
 
-  if (!fromLoc) return res.status(404).json({ error: `Location not found: ${from}` });
-  if (!toLoc)   return res.status(404).json({ error: `Location not found: ${to}` });
+  const fromName = req.body.fromName || from || `${fromLat.toFixed(4)},${fromLng.toFixed(4)}`;
+  const toName   = req.body.toName   || to   || `${toLat.toFixed(4)},${toLng.toFixed(4)}`;
+  const rtMap    = { 0: 'train', 1: 'tram', 2: 'bus', 3: 'vline' };
 
-  // Try PTV live journey planning
+  // ── PTV live routing ──────────────────────────────────────────────────
   if (PTV_DEV_ID && PTV_API_KEY) {
     try {
-      // Search for stops near from/to
-      const fromSearch = await ptvFetch(`/v3/search/${encodeURIComponent(fromLoc.name)}?route_types=0,1,2`);
-      const toSearch   = await ptvFetch(`/v3/search/${encodeURIComponent(toLoc.name)}?route_types=0,1,2`);
+      // 1. Find nearest stops to from and to coordinates
+      const [fromStops, toStops] = await Promise.all([
+        ptvFetch(`/v3/stops/location/${fromLat},${fromLng}?route_types=0,1,2,3&max_results=10&max_distance=1000`),
+        ptvFetch(`/v3/stops/location/${toLat},${toLng}?route_types=0,1,2,3&max_results=10&max_distance=1000`),
+      ]);
 
-      const fromStop = (fromSearch.stops || [])[0];
-      const toStop   = (toSearch.stops   || [])[0];
+      // Sort by distance, prefer train stops for longer trips
+      const directKmPrecheck = haversine(fromLat, fromLng, toLat, toLng);
+      const preferTrain = directKmPrecheck > 3;
+      const sortStops = (stops) => (stops || []).sort((a, b) => {
+        const aScore = (preferTrain && a.route_type === 0) ? -0.3 : 0;
+        const bScore = (preferTrain && b.route_type === 0) ? -0.3 : 0;
+        const aDist  = haversine(fromLat, fromLng, a.stop_latitude || fromLat, a.stop_longitude || fromLng);
+        const bDist  = haversine(fromLat, fromLng, b.stop_latitude || fromLat, b.stop_longitude || fromLng);
+        return (aDist + aScore) - (bDist + bScore);
+      });
 
-      if (fromStop && toStop) {
-        // Get departures from origin stop
-        const rtMap = { 0: 'train', 1: 'tram', 2: 'bus', 3: 'vline' };
-        const departures = await ptvFetch(
-          `/v3/departures/route_type/${fromStop.route_type}/stop/${fromStop.stop_id}?max_results=6&expand=run,route`
-        );
+      const nearFromStops = sortStops(fromStops.stops).slice(0, 5);
+      const nearToStops   = (toStops.stops   || []).slice(0, 8); // keep more to-stops for matching
 
-        const now = new Date();
-        const legs = (departures.departures || []).slice(0, 3).map(dep => {
-          const scheduledDep = dep.scheduled_departure_utc ? new Date(dep.scheduled_departure_utc) : now;
-          const estDep       = dep.estimated_departure_utc ? new Date(dep.estimated_departure_utc) : scheduledDep;
-          const delaySec     = (estDep - scheduledDep) / 1000;
-          const route = (departures.routes || {})[dep.route_id] || {};
-          const run   = (departures.runs   || {})[dep.run_ref]  || {};
-          const modeStr = rtMap[fromStop.route_type] || 'bus';
-          const transitMin = Math.round(haversine(fromLoc.lat, fromLoc.lng, toLoc.lat, toLoc.lng) / (modeStr === 'train' ? 60 : 25) * 60) + 3;
+      if (!nearFromStops.length || !nearToStops.length) throw new Error('No stops near locations');
 
-          return {
-            duration: transitMin + 5,
-            transfers: 0,
-            depart: estDep.toISOString(),
-            legs: [
-              { type: 'walk', from: fromLoc.name, to: fromStop.stop_name, duration: 2 },
-              {
-                type: modeStr,
-                line: route.route_number || route.route_name || dep.route_id,
-                color: MODE_COLOR[modeStr] || '#094c8d',
-                from: fromStop.stop_name,
-                to: toStop.stop_name,
-                duration: transitMin,
-                depart: estDep.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }),
-                delay: Math.max(0, Math.round(delaySec / 60)),
-              },
-              { type: 'walk', from: toStop.stop_name, to: toLoc.name, duration: 2 },
-            ],
-          };
-        });
+      const journeys = [];
 
-        if (legs.length > 0) {
-          return res.json({ mode: 'live', from: fromLoc, to: toLoc, journeys: legs });
+      // 2. For each candidate from-stop, get upcoming departures
+      for (const fromStop of nearFromStops) {
+        if (journeys.length >= 3) break;
+        try {
+          const deps = await ptvFetch(
+            `/v3/departures/route_type/${fromStop.route_type}/stop/${fromStop.stop_id}` +
+            `?max_results=12&expand=run,route&include_cancelled=false`
+          );
+
+          const now = Date.now();
+
+          for (const dep of (deps.departures || []).slice(0, 6)) {
+            if (journeys.length >= 3) break;
+            const route = (deps.routes || {})[dep.route_id] || {};
+            const modeStr = rtMap[fromStop.route_type] || 'bus';
+            const scheduledDep = dep.scheduled_departure_utc ? new Date(dep.scheduled_departure_utc) : new Date();
+            const estDep       = dep.estimated_departure_utc ? new Date(dep.estimated_departure_utc) : scheduledDep;
+            const delaySec     = Math.max(0, (estDep - scheduledDep) / 1000);
+            const minsUntilDep = Math.max(0, Math.round((estDep - now) / 60000));
+
+            // 3. Get full stop pattern for this run to find if it passes near destination
+            let routePath = [];
+            let toStopName = toName;
+            let transitMin = Math.round(
+              haversine(fromLat, fromLng, toLat, toLng) /
+              (modeStr === 'train' ? 1.0 : modeStr === 'tram' ? 0.42 : 0.45) * 60
+            ) + 2;
+
+            try {
+              const pattern = await ptvFetch(
+                `/v3/patterns/run/${dep.run_ref}/route_type/${fromStop.route_type}?expand=stop`
+              );
+              const stops = (pattern.stops || []);
+
+              // Find from-stop index and closest stop to destination
+              let fromIdx = stops.findIndex(s => s.stop_id === fromStop.stop_id);
+              if (fromIdx < 0) fromIdx = 0;
+
+              let bestToIdx = -1, bestToDist = Infinity;
+              for (const toStop of nearToStops) {
+                const idx = stops.findIndex(s => s.stop_id === toStop.stop_id);
+                if (idx > fromIdx) {
+                  const d = haversine(toStop.stop_latitude, toStop.stop_longitude, toLat, toLng);
+                  if (d < bestToDist) { bestToDist = d; bestToIdx = idx; toStopName = toStop.stop_name; }
+                }
+              }
+              // If exact to-stop not in run, find nearest stop to destination along run
+              if (bestToIdx < 0) {
+                stops.slice(fromIdx + 1).forEach((s, i) => {
+                  if (!s.stop_latitude) return;
+                  const d = haversine(s.stop_latitude, s.stop_longitude, toLat, toLng);
+                  if (d < bestToDist && d < 5.0) { // 5km radius
+                    bestToDist = d;
+                    bestToIdx = fromIdx + 1 + i;
+                    toStopName = s.stop_name;
+                  }
+                });
+              }
+
+              if (bestToIdx > fromIdx) {
+                const legStops = stops.slice(fromIdx, bestToIdx + 1);
+                routePath = legStops
+                  .filter(s => s.stop_latitude && s.stop_longitude)
+                  .map(s => [s.stop_latitude, s.stop_longitude]);
+                // Rough transit time from number of stops
+                transitMin = Math.max(3, Math.round(legStops.length * (modeStr === 'train' ? 2 : 3)));
+              }
+            } catch (patternErr) {
+              // Pattern fetch failed — use straight-line estimate
+            }
+
+            const walkDistM = haversine(fromLat, fromLng, fromStop.stop_latitude || fromLat, fromStop.stop_longitude || fromLng) * 1000;
+            const walkMin   = Math.max(1, Math.round(walkDistM / 80));
+            const totalMin  = walkMin + minsUntilDep + transitMin + 3;
+
+            journeys.push({
+              duration: totalMin,
+              transfers: 0,
+              depart: estDep.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }),
+              legs: [
+                { type: 'walk', from: fromName, to: fromStop.stop_name, duration: walkMin },
+                {
+                  type: modeStr,
+                  line: route.route_number || route.route_name || String(dep.route_id),
+                  color: MODE_COLOR[modeStr] || '#094c8d',
+                  from: fromStop.stop_name,
+                  to: toStopName,
+                  duration: transitMin,
+                  depart: estDep.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }),
+                  minsUntilDep,
+                  delay: Math.max(0, Math.round(delaySec / 60)),
+                  routePath,            // ← real stop-sequence coordinates for path animation
+                  run_ref: dep.run_ref, // ← for matching against live vehicle feed
+                },
+                { type: 'walk', from: toStopName, to: toName, duration: 3 },
+              ],
+            });
+          }
+        } catch (stopErr) {
+          console.warn(`  ✗ PTV departures for stop ${fromStop.stop_id}: ${stopErr.message}`);
         }
       }
+
+      if (journeys.length > 0) {
+        console.log(`  ✓ PTV journey: ${journeys.length} options from (${fromLat},${fromLng}) → (${toLat},${toLng})`);
+        return res.json({
+          mode: 'live',
+          from: { lat: fromLat, lng: fromLng, name: fromName },
+          to:   { lat: toLat,   lng: toLng,   name: toName },
+          journeys,
+        });
+      }
+      console.warn(`  ✗ PTV found ${nearFromStops.length} from-stops, ${nearToStops.length} to-stops but built 0 journeys — falling back`);
     } catch (e) {
       console.warn('PTV journey planning failed, using fallback:', e.message);
     }
   }
 
-  // Fallback mode
+  // ── Fallback: hardcoded route geometry ────────────────────────────────
+  const fromLoc = { lat: fromLat, lng: fromLng, name: fromName };
+  const toLoc   = { lat: toLat,   lng: toLng,   name: toName };
   const journeys = buildFallbackJourneys(fromLoc, toLoc);
   res.json({ mode: 'fallback', from: fromLoc, to: toLoc, journeys });
 });
@@ -1103,9 +1248,18 @@ app.get('/auth/dev-login', (req, res) => {
   res.json({ ok: true, token, user: { email: devEmail, username: user.username, karma: user.karma, avatar: user.avatar } });
 });
 
-// ── Static ────────────────────────────────────────────────────────────────────
+// ── Static — serve index.html with MAPBOX_TOKEN injected ─────────────────────
+// Token is never committed to source; it's substituted at request time.
+const indexPath = path.join(__dirname, 'public', 'index.html');
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  try {
+    const html = fs.readFileSync(indexPath, 'utf8')
+      .replace('__MAPBOX_TOKEN__', process.env.MAPBOX_TOKEN || '');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch(e) {
+    res.status(500).send('Failed to serve index.html');
+  }
 });
 
 app.listen(PORT, () => {
