@@ -192,6 +192,7 @@ const map = new maplibregl.Map({
   antialias: true
 });
 map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+window.map = map; // expose for navigation.js module
 map.on('error', e => console.error('[MapLibre error]', e.error?.message || e));
 map.on('load', () => {
   map.setFog({
@@ -360,7 +361,7 @@ function updateNearestVehicle(){
 const fModes=new Set(['train','tram','bus','vline']);
 const fLines=new Set(ROUTES.map(r=>r[1]));
 let fSearch='';
-let showAll=true;
+let showAll=false; // hidden on load; auto-shows at zoom ≥ 15
 
 function buildFilterPanel(){
   const body=document.getElementById('filter-body');
@@ -431,12 +432,21 @@ function passesFilter(v){
   if(v._live) return true;
   return fLines.has(v.line);
 }
+function updateShowAllBtn(){
+  const btn=document.getElementById('show-all-btn');
+  if(!btn) return;
+  btn.textContent=showAll?'Hide All':'Show Transport 🚆';
+  btn.classList.toggle('active',showAll);
+}
 function toggleShowAll(){
   showAll=!showAll;
-  const btn=document.getElementById('show-all-btn');
-  btn.textContent=showAll?'Hide All':'Show All';
-  btn.classList.toggle('active',showAll);
+  updateShowAllBtn();
   applyFilters();
+}
+function openFilterSheet(){
+  // Ensure vehicles are visible when the user opens the filter panel
+  if(!showAll){ showAll=true; updateShowAllBtn(); applyFilters(); }
+  openSheet('filter-sheet');
 }
 function applyFilters(){
   vehicles.forEach(v=>{
@@ -606,7 +616,8 @@ function getIconSz(){
   if(z === 14) return 32;
   if(z === 13) return 26;
   if(z === 12) return 20;
-  return 16;
+  if(z === 11) return 18; // zoom 11 → small face, not dot
+  return 14; // zoom ≤ 10 only → plain dot
 }
 
 function makeMarkerEl(v){
@@ -617,7 +628,7 @@ function makeMarkerEl(v){
   const seed = typeof v.id==='string'
     ? [...v.id].reduce((a,c)=>a+c.charCodeAt(0),0) : Number(v.id);
   const bobDelay = (seed*173)%2200;
-  const isDot = sz <= 20;
+  const isDot = sz < 18; // only at zoom ≤ 10 (sz=14)
   const el = document.createElement('div');
   if(isDot){
     el.innerHTML=`<div class="vm-wrap" style="width:${sz}px;height:${sz+6}px">
@@ -744,6 +755,15 @@ function toggleFollow(){
 })();
 
 map.on('zoom',()=>{
+  // Auto show/hide vehicles based on zoom level
+  const z = map.getZoom();
+  if(z >= 15 && !showAll){
+    showAll = true;
+    updateShowAllBtn();
+  } else if(z < 13 && showAll){
+    showAll = false;
+    updateShowAllBtn();
+  }
   for(const id in markers){
     const m=markers[id]; const ip=interp[id];
     if(ip){
@@ -1170,6 +1190,7 @@ async function init(){
   // DOM-only setup — no map dependency
   loadAvatar();
   loadGhostMode();
+  updateShowAllBtn(); // set button label to match initial showAll=false
   buildFilterPanel();
   initSearch();
 
@@ -1276,12 +1297,14 @@ function initSearch(){
     const q = input.value.trim();
     if(!q){ results.innerHTML=''; results.classList.remove('show'); return; }
     debounceTimer = setTimeout(async () => {
+      console.log('[Search] fetching autocomplete for:', q);
       try{
         const r = await fetch(`/api/journey/autocomplete?q=${encodeURIComponent(q)}`);
         const data = await r.json();
+        console.log('[Search] autocomplete results:', data.length, data);
         if(!Array.isArray(data)||!data.length){ results.innerHTML=''; results.classList.remove('show'); return; }
         renderSuggestions(data);
-      }catch(e){ console.error('[Search]', e); }
+      }catch(e){ console.error('[Search] fetch error:', e); }
     }, 220);
   });
 
@@ -1319,6 +1342,15 @@ function selectAddrResult(lat, lng, name, fullAddr){
   // Fetch real route from server
   if(userLoc){
     fetchAndActivateJourney(userLoc.lat, userLoc.lng, +lat, +lng, name);
+    // Also trigger Valhalla navigation overlay if navigation.js is loaded
+    if(typeof window.startNavigation === 'function'){
+      window.startNavigation(
+        {lng: userLoc.lng, lat: userLoc.lat},
+        {lng: +lng, lat: +lat},
+        name,
+        'pedestrian'
+      );
+    }
   } else {
     updateJourneyVehicles();
   }
