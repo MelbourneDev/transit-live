@@ -505,6 +505,18 @@ async function enrichWalkLegs(journeys) {
   await Promise.allSettled(tasks);
 }
 
+// ── GET /api/ad-spots — ad/marketing spots served from JSON file ─────────────
+app.get('/api/ad-spots', (req, res) => {
+  const filePath = path.join(__dirname, 'public', 'data', 'ad-spots.json');
+  if (!fs.existsSync(filePath)) return res.json({ type: 'FeatureCollection', features: [] });
+  try {
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    res.json(data);
+  } catch (e) {
+    res.json({ type: 'FeatureCollection', features: [] });
+  }
+});
+
 // ── GET /api/gtfs/shapes — real route lines for map display ──────────────────
 // Returns one representative GeoJSON LineString per route (train + tram only).
 app.get('/api/gtfs/shapes', (req, res) => {
