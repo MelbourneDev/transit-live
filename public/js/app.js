@@ -272,7 +272,6 @@ function startLocationWatch(){
     userLoc={lat,lng};
     placeUserPin(lat,lng);
     updateNearestVehicle();
-    if(destLoc && !journeyPolyline) updateJourneyLine();
   }, err=>console.warn('Watch error:', err.message),
   {enableHighAccuracy:true,maximumAge:5000,timeout:15000});
 }
@@ -1247,8 +1246,6 @@ function selectAddrResult(lat, lng, name, fullAddr){
   document.getElementById('addr-search-input')?.blur();
   placeDestPin(+lat, +lng, name, fullAddr);
   destLoc = {lat:+lat, lng:+lng, name};
-  // Draw placeholder dashed straight line immediately
-  updateJourneyLine();
   // Show bottom sheet in loading state right away
   showJourneyBottomSheetLoading(name);
   // Fetch real route from server
@@ -1554,7 +1551,6 @@ function bearingDiff(a,b){const d=Math.abs(a-b)%360;return d>180?360-d:d;}
 function activateJourneyMode(){
   closeSheet('dest-sheet');
   if(!destLoc) return;
-  updateJourneyLine();
   showJourneyBottomSheetLoading(destLoc.name);
   if(userLoc){
     fetchAndActivateJourney(userLoc.lat, userLoc.lng, destLoc.lat, destLoc.lng, destLoc.name);

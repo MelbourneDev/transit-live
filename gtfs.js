@@ -446,9 +446,9 @@ function planJourney(fromLat, fromLng, toLat, toLng, fromName, toName) {
         const transitMin  = (depMins !== null && arrMins !== null && arrMins > depMins)
           ? arrMins - depMins
           : Math.round(stopCount * (mode === 'train' ? 2 : 1.5));
-        const minsUntilDep = depMins !== null ? Math.max(0, depMins - nowMins) : 3;
-        // Skip trips that departed more than 5 min ago
-        if (depMins !== null && depMins < nowMins - 5) continue;
+        // Prefer trips departing soon; treat past trips as departing now
+        // (GTFS has all-day schedules — we can't distinguish today vs other days)
+        const minsUntilDep = depMins !== null ? Math.max(0, depMins - nowMins) : 0;
         const wTo         = walkMins(fromStop.distKm);
         const wFrom       = walkMins(toStop.distKm);
         const total       = wTo + minsUntilDep + transitMin + wFrom;
@@ -551,11 +551,9 @@ function planJourney(fromLat, fromLng, toLat, toLng, fromName, toName) {
                 const transit2   = (dep2From !== null && dep2To !== null && dep2To > dep2From)
                   ? dep2To - dep2From
                   : Math.round((j - xferIdx) * (mode2 === 'train' ? 2 : 1.5));
-                // Skip trips that departed more than 5 min ago
-                if (dep1From !== null && dep1From < nowMins - 5) continue;
                 const xferWalkKm = haversineKm(xferStop.lat, xferStop.lng, boardStop2.lat, boardStop2.lng);
                 const xferMins   = Math.max(2, walkMins(xferWalkKm));
-                const wait1      = dep1From !== null ? Math.max(0, dep1From - nowMins) : 3;
+                const wait1      = dep1From !== null ? Math.max(0, dep1From - nowMins) : 0;
                 const wTo        = walkMins(fromStop.distKm);
                 const wFrom      = walkMins(toStop.distKm);
                 const total      = wTo + wait1 + transit1 + xferMins + transit2 + wFrom;
