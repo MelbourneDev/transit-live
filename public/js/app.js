@@ -308,7 +308,7 @@ function updateNearestVehicle(){
 }
 
 // ── Filter state ───────────────────────────────────────────────────────
-const fModes=new Set(['train','tram','bus','vline']);
+const fModes=new Set(); // empty — vehicles load on demand when user enables a mode
 let fSearch='';
 let showAll=false; // hidden on load; auto-shows at zoom ≥ 15
 
@@ -336,15 +336,23 @@ function toggleMode(mode){
   if(fModes.has(mode)) fModes.delete(mode); else fModes.add(mode);
   const tog=document.getElementById(`tog-${mode}`);
   if(tog) tog.className=`fp-tog ${fModes.has(mode)?'on':''}`;
+  // Fetch vehicles if any mode is now active and we haven't loaded yet
+  if(fModes.size > 0 && !isLive && !_vehicleFetchActive) startVehicleFeed();
+  // Stop refreshing if all modes off
+  if(fModes.size === 0) stopVehicleFeed();
   applyFilters();
 }
 function filterShowAll(){
   ['train','tram','bus','vline'].forEach(m=>fModes.add(m));
-  buildFilterPanel(); applyFilters();
+  buildFilterPanel();
+  if(!_vehicleFetchActive) startVehicleFeed();
+  applyFilters();
 }
 function filterClearAll(){
   fModes.clear();
-  buildFilterPanel(); applyFilters();
+  buildFilterPanel();
+  stopVehicleFeed();
+  applyFilters();
 }
 function passesBaseFilter(v){
   if(!fModes.has(v.mode)) return false;
@@ -537,14 +545,22 @@ const MARKER_SZ = 22; // fixed size — never changes with zoom, never turns int
 
 function makeMarkerEl(v){
   const delayed = v.delay>2;
-  const sz = MARKER_SZ;
   const color = MODE_COLOR[v.mode]||v.color||'#5b8dee';
-  const glowCol = (delayed?'#ff6b6b':color)+'66';
-  const seed = typeof v.id==='string'
-    ? [...v.id].reduce((a,c)=>a+c.charCodeAt(0),0) : Number(v.id);
-  const bobDelay = (seed*173)%2200;
+  const zoom = map.getZoom();
   const el = document.createElement('div');
-  {
+
+  if(zoom < 15){
+    // Simple colored dot at overview zoom — lightweight DOM
+    const dotSz = zoom < 12 ? 6 : 8;
+    const dotColor = delayed ? '#ff6b6b' : color;
+    el.innerHTML=`<div class="vm-dot" style="width:${dotSz}px;height:${dotSz}px;background:${dotColor};border-radius:50%;border:1.5px solid rgba(255,255,255,0.8);box-shadow:0 0 4px ${dotColor}66"></div>`;
+  } else {
+    // Full SVG face at close zoom
+    const sz = MARKER_SZ;
+    const glowCol = (delayed?'#ff6b6b':color)+'66';
+    const seed = typeof v.id==='string'
+      ? [...v.id].reduce((a,c)=>a+c.charCodeAt(0),0) : Number(v.id);
+    const bobDelay = (seed*173)%2200;
     const pad=4; const sq=sz+pad;
     const routeLabel = getRouteLabel(v);
     const svg=makeFaceSVG(v.mode,delayed,color,sz,routeLabel);
@@ -992,6 +1008,25 @@ document.addEventListener('keydown',e=>{
 
 // ── Live / Demo ────────────────────────────────────────────────────────
 let isLive=false, vehicles=[], demoTimer=null;
+let _vehicleFetchActive=false, _vehicleInterval=null;
+
+function startVehicleFeed(){
+  if(_vehicleFetchActive) return;
+  _vehicleFetchActive=true;
+  fetchLive().then(ok=>{
+    if(ok && !_vehicleInterval){
+      _vehicleInterval=setInterval(fetchLive, REFRESH_MS);
+    }
+  });
+}
+function stopVehicleFeed(){
+  if(_vehicleInterval){ clearInterval(_vehicleInterval); _vehicleInterval=null; }
+  // Remove all markers from map (keep data in memory for quick re-show)
+  Object.keys(markers).forEach(id=>{
+    if(markersOnMap.has(id)){ markers[id].remove(); markersOnMap.delete(id); }
+  });
+  updateCounts([]);
+}
 
 async function fetchLive(){
   try{
@@ -1093,19 +1128,11 @@ async function init(){
   buildFilterPanel();
   initSearch();
 
-  // Spawn demo vehicles immediately — maplibregl.Marker works before map load
-  vehicles = spawnDemo();
-  vehicles.forEach(upsert);
-  updateCounts(vehicles);
-  lastUpdate = Date.now();
-  demoTimer = setInterval(tickDemo, 1400);
+  // Vehicles load on demand when user enables a mode in the filter panel
+  // No demo or live fetch at startup — clean map
 
-  fetchAlerts();
   fetchInspectors();
   setInterval(fetchInspectors, 60000);
-
-  // Kick off live fetch without blocking
-  const livePromise = fetchLive();
 
   // Map-specific setup — waits for load but has a 5s timeout so it never hangs
   try {
@@ -1129,20 +1156,9 @@ async function init(){
 
   setTimeout(hideLoader, 1500);
 
-  const live = await livePromise;
-  if(live){
-    setInterval(fetchLive, REFRESH_MS);
-    setInterval(fetchAlerts, 120000);
-  } else {
-    document.getElementById('mode-badge').className = 'mode-badge demo';
-    document.getElementById('mode-text').textContent = 'DEMO';
-    setInterval(async()=>{
-      if(!isLive){
-        const ok = await fetchLive();
-        if(ok){ setInterval(fetchLive,REFRESH_MS); setInterval(fetchAlerts,120000); }
-      }
-    }, 30000);
-  }
+  // Mode badge — starts as LIVE (data loads when user picks a filter)
+  document.getElementById('mode-badge').className = 'mode-badge live';
+  document.getElementById('mode-text').textContent = 'LIVE';
 
   if(!localStorage.getItem('tl-onboarded')) setTimeout(showOnboarding, 800);
 }
@@ -1755,24 +1771,7 @@ function updateJourneyVehicles(){
     }
   }
 
-  // Fallback: bearing-based candidate matching
-  const bearingToDest = bearingBetween(userLoc.lat, userLoc.lng, destLoc.lat, destLoc.lng);
-  const candidates = vehicles
-    .filter(v => passesBaseFilter(v) && typeof v.bearing === 'number')
-    .map(v => {
-      const bd   = bearingDiff(v.bearing, bearingToDest);
-      const dist = haversine(userLoc.lat, userLoc.lng, v.lat, v.lng);
-      return {v, bd, dist};
-    })
-    .filter(({bd}) => bd < 90)
-    .sort((a, b) => a.dist - b.dist)
-    .slice(0, 3);
-
-  candidates.forEach(({v}) => {
-    journeyHighlightedIds.add(v.id);
-    const el = markers[v.id]?.getElement()?.querySelector('.vm-wrap');
-    if(el) el.classList.add('journey-hl');
-  });
+  // No bearing fallback — only show vehicles matched to the actual route
   applyFilters();
 }
 
