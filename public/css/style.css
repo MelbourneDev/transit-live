@@ -94,7 +94,7 @@ button{font-family:var(--font);cursor:pointer}
   outline:none;transition:box-shadow .15s}
 .sb-inputs input::placeholder{color:var(--text3)}
 .sb-inputs input:focus{box-shadow:0 0 0 2px var(--blue)}
-#sb-from-input{color:var(--text2);cursor:default}
+#sb-from-input{color:var(--text2)}
 
 /* Suggestions dropdown */
 #addr-suggestions{

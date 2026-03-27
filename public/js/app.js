@@ -1370,28 +1370,28 @@ function updateJourneyPolyline(){
       map.addLayer({
         id: baseId, type:'line', source:baseId,
         layout:{'line-cap':'round','line-join':'round'},
-        paint:{'line-color':'#6C63FF','line-width':3.5,'line-opacity':0.85,'line-dasharray':[4, 2.5]}
+        paint:{'line-color':'#6C63FF','line-width':4,'line-opacity':0.85,'line-dasharray':[0.5, 1.5]}
       });
     } else {
-      // Transit: colored line with dark border
+      // Transit: vibrant colored line with crisp dark border
       map.addLayer({
         id: baseId+'-border', type:'line', source:baseId,
         layout:{'line-cap':'round','line-join':'round'},
-        paint:{'line-color':'#1a1a2e','line-width':9,'line-opacity':0.25}
+        paint:{'line-color':'#1a1a2e','line-width':10,'line-opacity':0.35}
       });
       map.addLayer({
         id: baseId, type:'line', source:baseId,
         layout:{'line-cap':'round','line-join':'round'},
-        paint:{'line-color':color,'line-width':5.5,'line-opacity':0.9}
+        paint:{'line-color':color,'line-width':6,'line-opacity':0.95}
       });
-      // Racing light overlay — a bright highlight that sweeps along the line
+      // Racing light — sharp bright point that sweeps along the line
       map.addSource(baseId+'-pulse-src', {type:'geojson', data:geojson, lineMetrics:true});
       map.addLayer({
         id: baseId+'-pulse', type:'line', source:baseId+'-pulse-src',
         layout:{'line-cap':'round','line-join':'round'},
         paint:{
-          'line-width':6,
-          'line-opacity':0.6,
+          'line-width':4,
+          'line-opacity':0.8,
           'line-gradient':['interpolate',['linear'],['line-progress'],
             0,'rgba(255,255,255,0)',
             0.45,'rgba(255,255,255,0)',
@@ -1428,8 +1428,8 @@ function updateJourneyPolyline(){
 
   // Racing light animation — bright highlight sweeps along transit lines
   let pulsePos = 0;
-  const PULSE_SPEED = 0.002;
-  const PULSE_WIDTH = 0.04;
+  const PULSE_SPEED = 0.0018;
+  const PULSE_WIDTH = 0.015;
   function animatePulse(){
     if(!journeyPolyline) return;
     pulsePos = (pulsePos + PULSE_SPEED) % 1;
@@ -1441,11 +1441,11 @@ function updateJourneyPolyline(){
         map.setPaintProperty(pulseId, 'line-gradient', [
           'interpolate',['linear'],['line-progress'],
           0, 'rgba(255,255,255,0)',
-          Math.max(0, lo - 0.01), 'rgba(255,255,255,0)',
-          lo, 'rgba(255,255,255,0.3)',
-          pulsePos, 'rgba(255,255,255,0.85)',
-          hi, 'rgba(255,255,255,0.3)',
-          Math.min(1, hi + 0.01), 'rgba(255,255,255,0)',
+          lo, 'rgba(255,255,255,0)',
+          Math.min(lo + 0.005, pulsePos), 'rgba(255,255,255,0.95)',
+          pulsePos, 'rgba(255,255,255,1)',
+          Math.max(hi - 0.005, pulsePos), 'rgba(255,255,255,0.95)',
+          hi, 'rgba(255,255,255,0)',
           1, 'rgba(255,255,255,0)',
         ]);
       }
