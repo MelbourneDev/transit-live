@@ -1118,7 +1118,6 @@ async function init(){
   try {
     await mapReady();
     await buildRouteSources();
-    await buildStations();
 
     const loc = await locateUser();
     if(loc){
@@ -1431,7 +1430,7 @@ function updateJourneyPolyline(){
       map.addLayer({
         id: baseId, type:'line', source:baseId,
         layout:{'line-cap':'round','line-join':'round'},
-        paint:{'line-color':'#6C63FF','line-width':4,'line-opacity':0.85,'line-dasharray':[0.5, 1.5]}
+        paint:{'line-color':'#6C63FF','line-width':4,'line-opacity':0.85,'line-dasharray':[0.8, 1.2]}
       });
     } else {
       // Transit: vibrant colored line with crisp dark border
@@ -1445,13 +1444,13 @@ function updateJourneyPolyline(){
         layout:{'line-cap':'round','line-join':'round'},
         paint:{'line-color':color,'line-width':6,'line-opacity':0.95}
       });
-      // Racing spark — sharp point of light that sweeps along the line
+      // Racing glow — visible bright spot that sweeps along the line
       map.addSource(baseId+'-pulse-src', {type:'geojson', data:geojson, lineMetrics:true});
       map.addLayer({
         id: baseId+'-pulse', type:'line', source:baseId+'-pulse-src',
         layout:{'line-cap':'round','line-join':'round'},
         paint:{
-          'line-width':3,
+          'line-width':5,
           'line-opacity':1,
           'line-gradient':['interpolate',['linear'],['line-progress'],
             0,'rgba(255,255,255,0)',
@@ -1490,22 +1489,23 @@ function updateJourneyPolyline(){
   // Racing light animation — bright highlight sweeps along transit lines
   let pulsePos = 0;
   const PULSE_SPEED = 0.0015;
+  const PULSE_W = 0.03; // width of the glow
   function animatePulse(){
     if(!journeyPolyline) return;
     pulsePos = (pulsePos + PULSE_SPEED) % 1;
-    // Sharp spark — near-instant on/off with 0.001 transition
     const p = pulsePos;
-    const s = 0.001; // sharpness — almost zero transition
     for(let i=0;i<layerCount;i++){
       const pulseId = `journey-leg-${i}-pulse`;
       if(map.getLayer(pulseId)){
         map.setPaintProperty(pulseId, 'line-gradient', [
           'interpolate',['linear'],['line-progress'],
-          0,           'rgba(255,255,255,0)',
-          Math.max(0, p - s), 'rgba(255,255,255,0)',
-          p,           'rgba(255,255,255,1)',
-          Math.min(1, p + s), 'rgba(255,255,255,0)',
-          1,           'rgba(255,255,255,0)',
+          0, 'rgba(255,255,255,0)',
+          Math.max(0, p - PULSE_W), 'rgba(255,255,255,0)',
+          Math.max(0, p - PULSE_W*0.3), 'rgba(255,255,255,0.7)',
+          p, 'rgba(255,255,255,1)',
+          Math.min(1, p + PULSE_W*0.3), 'rgba(255,255,255,0.7)',
+          Math.min(1, p + PULSE_W), 'rgba(255,255,255,0)',
+          1, 'rgba(255,255,255,0)',
         ]);
       }
     }
