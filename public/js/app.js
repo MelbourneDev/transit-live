@@ -127,8 +127,8 @@ const map = new maplibregl.Map({
   style: '/styles/maplibre-style.json',
   center: [144.9631, -37.8136],  // [lng, lat]
   zoom: 13,
-  pitch: 45,
-  bearing: -15,
+  pitch: 0,
+  bearing: 0,
   antialias: true
 });
 map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
@@ -1808,7 +1808,7 @@ function clearDestination(){
   const sheet = document.getElementById('journey-bottom-sheet');
   if(sheet) sheet.classList.remove('show');
   // Restore isometric view
-  map.easeTo({pitch:45, bearing:-15, duration:800});
+  map.easeTo({pitch:0, bearing:0, duration:800});
 }
 
 // Refresh journey vehicle highlights on each data update

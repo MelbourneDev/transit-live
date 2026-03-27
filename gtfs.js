@@ -332,15 +332,24 @@ function minsToTime(mins) {
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
-// ── Nearest stops ─────────────────────────────────────────────────────────────
-// Returns all stops within maxKm, sorted by distance, capped at maxN
+// ── Nearest stops (grid-accelerated) ──────────────────────────────────────────
+// Uses the spatial grid to avoid scanning all 27k stops
 function nearestStops(lat, lng, n = 5, maxKm = 1.2) {
+  const cells = Math.ceil(maxKm / (GRID_DEG * 111)) + 1;
+  const latBucket = Math.floor(lat / GRID_DEG);
+  const lngBucket = Math.floor(lng / GRID_DEG);
   const results = [];
-  for (const s of stops.values()) {
-    if (!stopTrips.has(s.id)) continue;
-    const distKm = haversineKm(lat, lng, s.lat, s.lng);
-    if (distKm > maxKm) continue;
-    results.push({ ...s, distKm });
+  for (let dLat = -cells; dLat <= cells; dLat++) {
+    for (let dLng = -cells; dLng <= cells; dLng++) {
+      const ids = stopGrid.get(`${latBucket + dLat},${lngBucket + dLng}`);
+      if (!ids) continue;
+      for (const id of ids) {
+        const s = stops.get(id);
+        if (!s) continue;
+        const distKm = haversineKm(lat, lng, s.lat, s.lng);
+        if (distKm <= maxKm) results.push({ ...s, distKm });
+      }
+    }
   }
   return results.sort((a, b) => a.distKm - b.distKm).slice(0, n);
 }
@@ -402,8 +411,8 @@ function planJourney(fromLat, fromLng, toLat, toLng, fromName, toName) {
   if (!_loaded) throw new Error('GTFS not loaded');
 
   const nowMins   = new Date().getHours() * 60 + new Date().getMinutes();
-  const fromStops = nearestStops(fromLat, fromLng, 20, 1.2);
-  const toStops   = nearestStops(toLat, toLng, 20, 1.2);
+  const fromStops = nearestStops(fromLat, fromLng, 10, 0.8);
+  const toStops   = nearestStops(toLat, toLng, 10, 0.8);
   const toStopSet = new Set(toStops.map(s => s.id));
   const toStopMap = new Map(toStops.map(s => [s.id, s]));
 

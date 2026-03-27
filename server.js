@@ -588,19 +588,24 @@ app.post('/api/journey', async (req, res) => {
                       to: { lat: toLat, lng: toLng, name: toName }, journeys: [] });
 
   try {
+    const t0 = Date.now();
     const journeys = gtfs.planJourney(fromLat, fromLng, toLat, toLng, fromName, toName);
     if (!journeys.length) throw new Error('No routes found');
 
-    // Enrich walk legs with real Valhalla walking paths (fire all requests in parallel)
-    await enrichWalkLegs(journeys);
+    // Return journey immediately — walk paths enriched in background
+    // Frontend draws straight-line walk segments first, then fetches refined paths
+    console.log(`  ✓ GTFS journey: ${journeys.length} options in ${Date.now()-t0}ms (${fromLat},${fromLng}) → (${toLat},${toLng})`);
 
-    console.log(`  ✓ GTFS journey: ${journeys.length} options (${fromLat},${fromLng}) → (${toLat},${toLng})`);
-    return res.json({
+    const response = {
       mode:     'live',
       from:     { lat: fromLat, lng: fromLng, name: fromName },
       to:       { lat: toLat,   lng: toLng,   name: toName },
       journeys,
-    });
+    };
+    res.json(response);
+
+    // Fire-and-forget: enrich walk legs for future cache (doesn't block response)
+    enrichWalkLegs(journeys).catch(() => {});
   } catch (e) {
     console.warn('GTFS journey failed:', e.message);
     return res.json({ mode: 'fallback', from: { lat: fromLat, lng: fromLng, name: fromName },
