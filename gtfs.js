@@ -406,13 +406,33 @@ function clipShape(shape, fromStop, toStop) {
   return shape.slice(fromBest, toBest + 1);
 }
 
+// ── Mode-varied stop selection for journey planning ───────────────────────────
+// Ensures at least 2 stops per available mode so the planner can find
+// train, tram, AND bus options — not just whichever mode has the closest stop.
+function nearestStopsVaried(lat, lng) {
+  const all = nearestStops(lat, lng, 80, 1.5);
+  const byMode = { train: [], tram: [], bus: [], vline: [] };
+  for (const s of all) {
+    if (byMode[s.mode] && byMode[s.mode].length < 4) byMode[s.mode].push(s);
+  }
+  // Combine: up to 4 per mode, deduplicate by stop ID
+  const seen = new Set();
+  const result = [];
+  for (const mode of ['train', 'tram', 'bus', 'vline']) {
+    for (const s of byMode[mode]) {
+      if (!seen.has(s.id)) { seen.add(s.id); result.push(s); }
+    }
+  }
+  return result;
+}
+
 // ── Journey planner ───────────────────────────────────────────────────────────
 function planJourney(fromLat, fromLng, toLat, toLng, fromName, toName) {
   if (!_loaded) throw new Error('GTFS not loaded');
 
   const nowMins   = new Date().getHours() * 60 + new Date().getMinutes();
-  const fromStops = nearestStops(fromLat, fromLng, 10, 0.8);
-  const toStops   = nearestStops(toLat, toLng, 10, 0.8);
+  const fromStops = nearestStopsVaried(fromLat, fromLng);
+  const toStops   = nearestStopsVaried(toLat, toLng);
   const toStopSet = new Set(toStops.map(s => s.id));
   const toStopMap = new Map(toStops.map(s => [s.id, s]));
 

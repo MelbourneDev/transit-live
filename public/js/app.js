@@ -361,8 +361,7 @@ function passesBaseFilter(v){
 }
 function passesFilter(v){
   if(!fModes.has(v.mode)) return false;
-  if(!passesProximity(v)) return false;
-  if(!showAll && !journeyHighlightedIds.has(v.id)) return false;
+  // If user explicitly enabled this mode, show it (skip proximity/showAll gates)
   return true;
 }
 function updateShowAllBtn(){
