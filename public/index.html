@@ -93,67 +93,28 @@
   <div id="addr-suggestions"></div>
 </div>
 
-<!-- Journey Bottom Sheet -->
+<!-- Journey Planner Sheet -->
 <div id="journey-bottom-sheet">
   <div class="jbs-handle-wrap"><div class="jbs-handle"></div></div>
   <div class="jbs-header">
     <div class="jbs-dest" id="jbs-dest">Destination</div>
     <button class="jbs-close-btn" onclick="clearDestination()">✕ Clear</button>
   </div>
-  <div class="jbs-route-row" id="jbs-route-row">
-    <div class="jbs-mode-pill" id="jbs-mode-pill">🗺</div>
-    <div class="jbs-route-info">
-      <div class="jbs-route-name" id="jbs-route-name">Finding route…</div>
-      <div class="jbs-route-sub" id="jbs-route-sub"></div>
+  <!-- Route option tabs — one per journey option returned by planner -->
+  <div class="jbs-options" id="jbs-options"></div>
+  <!-- Summary for the selected option -->
+  <div class="jbs-summary" id="jbs-summary">
+    <div class="jbs-summary-pill" id="jbs-mode-pill">🗺</div>
+    <div class="jbs-summary-info">
+      <span class="jbs-duration" id="jbs-duration">—</span>
+      <span class="jbs-summary-sub" id="jbs-route-name">Finding route…</span>
     </div>
+    <div class="jbs-depart-badge" id="jbs-depart-time">—</div>
   </div>
-  <div class="jbs-stats-row">
-    <div class="jbs-stat-item">
-      <div class="jbs-stat-val" id="jbs-duration">—</div>
-      <div class="jbs-stat-label">min total</div>
-    </div>
-    <div class="jbs-stat-divider"></div>
-    <div class="jbs-stat-item">
-      <div class="jbs-stat-val" id="jbs-depart-time">—</div>
-      <div class="jbs-stat-label">departs</div>
-    </div>
-    <div class="jbs-stat-divider"></div>
-    <div class="jbs-stat-item">
-      <div class="jbs-stat-val" id="jbs-walk-time">—</div>
-      <div class="jbs-stat-label">min walk</div>
-    </div>
-  </div>
-  <div class="jbs-next-stop-row">
-    <span class="jbs-next-label">Next stop</span>
-    <span class="jbs-next-val" id="jbs-next-stop">—</span>
-  </div>
-  <button class="jbs-report-btn" onclick="openSheet('report-sheet')">⚠️ Report Incident</button>
-</div>
-
-<!-- Journey bar (hidden — kept for compat) -->
-<div id="journey-bar" style="display:none">
-  <div class="jb-ico">🗺️</div>
-  <div class="jb-txt">
-    <div class="jb-title" id="jb-title">Journey mode</div>
-    <div class="jb-sub" id="jb-sub">Finding vehicles heading your way…</div>
-  </div>
-  <button class="jb-close" onclick="clearDestination()">✕ Clear</button>
-</div>
-
-<!-- Journey cards (hidden — kept for compat) -->
-<div id="journey-cards" style="display:none">
-  <div class="jc-header">
-    <div class="jc-title">🗺️ Getting there...</div>
-    <button class="jc-close-btn" onclick="clearDestination()">✕ Clear</button>
-  </div>
-  <div class="jc-viewport" id="jc-viewport">
-    <div class="jc-track" id="jc-track"></div>
-  </div>
-  <div class="jc-nav">
-    <button class="jc-arr" id="jc-prev" onclick="jcSwipe(-1)">← Prev</button>
-    <div class="jc-dots" id="jc-dots"></div>
-    <button class="jc-arr" id="jc-next" onclick="jcSwipe(1)">Next →</button>
-  </div>
+  <!-- Step-by-step legs -->
+  <div class="jbs-legs" id="jbs-legs"></div>
+  <!-- Go button — will hook into navigation mode -->
+  <button class="jbs-go-btn" id="jbs-go-btn" onclick="startJourneyGo()" style="display:none">Let's Go →</button>
 </div>
 
 <!-- Follow bar -->
@@ -423,8 +384,6 @@
     <div style="height:12px"></div>
   </div>
 </div>
-<!-- Token injected by server at request time — never hardcoded here -->
-<script>window.MAPBOX_TOKEN = '__MAPBOX_TOKEN__';</script>
 <script src="/js/app.js"></script>
 <script type="module">
   import { NavigationController, bindJourneySheet } from '/js/navigation.js';
@@ -432,7 +391,7 @@
   window.addEventListener('load', () => {
     if(!window.map) return;
     const nav = new NavigationController(window.map, {
-      valhallaUrl: 'https://valhalla.stadiamaps.com'
+      valhallaUrl: ''  // empty = use relative /api/route proxy on this server
     });
     bindJourneySheet(nav);
   });

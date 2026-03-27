@@ -8,68 +8,8 @@ const ALERT_EFFECTS = {
   4:'Detour',5:'Additional Service',6:'Modified Service',7:'Other Effect',8:'Unknown Effect'
 };
 
-// ── Route data ─────────────────────────────────────────────────────────
-const ROUTES=[
-  ['train','Belgrave',    '#094c8d','Belgrave Line',    [[-37.8183,144.9671],[-37.8274,145.0118],[-37.8241,145.0585],[-37.8116,145.2276],[-37.8603,145.3556]]],
-  ['train','Glen Waverley','#094c8d','Glen Waverley Line',[[-37.8183,144.9671],[-37.8274,145.0118],[-37.8432,145.0693],[-37.8701,145.1146],[-37.8786,145.1644]]],
-  ['train','Lilydale',    '#094c8d','Lilydale Line',    [[-37.8183,144.9671],[-37.8274,145.0118],[-37.8241,145.0585],[-37.8116,145.2276],[-37.7578,145.3568]]],
-  ['train','Alamein',     '#094c8d','Alamein Line',     [[-37.8183,144.9671],[-37.8274,145.0118],[-37.8241,145.0585],[-37.8381,145.0769],[-37.8518,145.0981]]],
-  ['train','Frankston',   '#159943','Frankston Line',   [[-37.8183,144.9671],[-37.8388,144.9927],[-37.8769,145.0238],[-37.9210,145.0740],[-37.9710,145.0942],[-38.1391,145.1232]]],
-  ['train','Cranbourne',  '#8b1a4a','Cranbourne Line',  [[-37.8183,144.9671],[-37.8388,144.9927],[-37.8769,145.0238],[-37.9841,145.1282],[-38.0652,145.2847],[-38.1133,145.3485]]],
-  ['train','Pakenham',    '#8b1a4a','Pakenham Line',    [[-37.8183,144.9671],[-37.8388,144.9927],[-37.8769,145.0238],[-37.9841,145.1282],[-38.0480,145.3956],[-38.0724,145.4897]]],
-  ['train','Sandringham', '#f178af','Sandringham Line', [[-37.8183,144.9671],[-37.8388,144.9927],[-37.8769,145.0238],[-37.9090,144.9980],[-37.9504,145.0091]]],
-  ['train','Werribee',    '#159943','Werribee Line',    [[-37.8183,144.9671],[-37.8047,144.9426],[-37.8440,144.8788],[-37.8671,144.7769],[-37.9014,144.6604]]],
-  ['train','Williamstown','#159943','Williamstown Line',[[-37.8183,144.9671],[-37.8047,144.9426],[-37.8440,144.8788],[-37.8640,144.8950]]],
-  ['train','Sunbury',     '#fc7f1e','Sunbury Line',     [[-37.8183,144.9671],[-37.8183,144.9526],[-37.7994,144.9293],[-37.7871,144.8310],[-37.5774,144.7275]]],
-  ['train','Craigieburn', '#fc7f1e','Craigieburn Line', [[-37.8183,144.9671],[-37.8047,144.9426],[-37.7994,144.9293],[-37.6815,144.9176],[-37.6025,144.9463]]],
-  ['train','Upfield',     '#fc7f1e','Upfield Line',     [[-37.8183,144.9671],[-37.8047,144.9426],[-37.7994,144.9293],[-37.7407,144.9641],[-37.6422,144.9536]]],
-  ['train','Mernda',      '#e1261c','Mernda Line',      [[-37.8183,144.9671],[-37.7921,144.9987],[-37.7596,145.0285],[-37.7096,145.0535],[-37.6012,145.0886]]],
-  ['train','Hurstbridge', '#e1261c','Hurstbridge Line', [[-37.8183,144.9671],[-37.7921,144.9987],[-37.7596,145.0285],[-37.7096,145.0535],[-37.6795,145.1545],[-37.6283,145.1805]]],
-  ['tram','Route 96',  '#f5a800','Route 96',  [[-37.8649,144.9785],[-37.8388,144.9800],[-37.8183,144.9671],[-37.8094,144.9671],[-37.7751,144.9789]]],
-  ['tram','Route 19',  '#00b5e2','Route 19',  [[-37.7320,144.9601],[-37.7720,144.9630],[-37.8094,144.9671],[-37.8183,144.9671]]],
-  ['tram','Route 86',  '#f5a800','Route 86',  [[-37.7087,145.0148],[-37.7610,144.9850],[-37.8070,144.9810],[-37.8183,144.9671]]],
-  ['tram','Route 57',  '#00b5e2','Route 57',  [[-37.7628,144.8845],[-37.8000,144.9220],[-37.8140,144.9526],[-37.8183,144.9671]]],
-  ['tram','Route 48',  '#00b5e2','Route 48',  [[-37.8085,145.0570],[-37.8094,145.0290],[-37.8094,144.9730],[-37.8094,144.9430]]],
-  ['tram','Route 70',  '#e1261c','Route 70',  [[-37.8214,144.9443],[-37.8183,144.9671],[-37.8230,144.9921],[-37.8390,145.0760]]],
-  ['tram','Route 109', '#e1261c','Route 109', [[-37.8183,144.9526],[-37.8183,144.9671],[-37.8280,145.0280],[-37.8280,145.1000]]],
-  ['tram','Route 112', '#f5a800','Route 112', [[-37.7455,144.9777],[-37.7950,144.9700],[-37.8094,144.9671],[-37.8390,144.9671]]],
-  ['tram','Route 1',   '#78be20','Route 1',   [[-37.8700,144.9580],[-37.8300,144.9666],[-37.8183,144.9671],[-37.7894,144.9698]]],
-  ['tram','Route 75',  '#e1261c','Route 75',  [[-37.8630,145.1210],[-37.8290,145.0240],[-37.8183,144.9730],[-37.8183,144.9526]]],
-  ['tram','Route 59',  '#00b5e2','Route 59',  [[-37.7220,144.8830],[-37.7720,144.9170],[-37.8094,144.9526]]],
-  ['bus','Route 246',  '#7b5ea7','Route 246', [[-37.8000,144.9580],[-37.8140,144.9350],[-37.8280,144.9100]]],
-  ['bus','Route 605',  '#009b77','Route 605', [[-37.8094,144.9629],[-37.7750,145.0450],[-37.7930,145.1218]]],
-  ['bus','Route 750',  '#009b77','Route 750', [[-37.8769,145.0238],[-37.9050,145.1100],[-37.9250,145.1650]]],
-  ['bus','Route 901',  '#d4a017','Route 901', [[-37.8769,145.0238],[-37.9841,145.1282],[-38.1145,145.1212]]],
-  ['bus','Route 902',  '#d4a017','Route 902', [[-37.7839,144.8781],[-37.8794,144.8608],[-37.9301,144.8952]]],
-  ['bus','Route 903',  '#d4a017','Route 903', [[-37.7839,144.8781],[-37.8769,145.0238],[-37.9841,145.1282]]],
-  ['bus','Route 302',  '#7b5ea7','Route 302', [[-37.8183,144.9671],[-37.8183,145.0500],[-37.8182,145.1428]]],
-  ['bus','Route 401',  '#7b5ea7','Route 401', [[-37.8183,144.9671],[-37.8600,144.9840],[-37.8769,145.0238]]],
-];
-
-const STATIONS=[
-  {name:'Flinders Street', lat:-37.8182,lng:144.9671,type:'train',color:'#094c8d'},
-  {name:'Southern Cross',  lat:-37.8183,lng:144.9526,type:'train',color:'#094c8d'},
-  {name:'Melbourne Central',lat:-37.8098,lng:144.9631,type:'train',color:'#094c8d'},
-  {name:'Flagstaff',       lat:-37.8116,lng:144.9572,type:'train',color:'#094c8d'},
-  {name:'Parliament',      lat:-37.8114,lng:144.9730,type:'train',color:'#094c8d'},
-  {name:'Richmond',        lat:-37.8244,lng:144.9987,type:'train',color:'#094c8d'},
-  {name:'North Melbourne', lat:-37.8047,lng:144.9426,type:'train',color:'#094c8d'},
-  {name:'Footscray',       lat:-37.8019,lng:144.8993,type:'train',color:'#094c8d'},
-  {name:'Caulfield',       lat:-37.8769,lng:145.0238,type:'train',color:'#8b1a4a'},
-  {name:'Clayton',         lat:-37.9210,lng:145.1202,type:'train',color:'#8b1a4a'},
-  {name:'Box Hill',        lat:-37.8196,lng:145.1228,type:'train',color:'#094c8d'},
-  {name:'Camberwell',      lat:-37.8274,lng:145.0588,type:'train',color:'#094c8d'},
-  {name:'Dandenong',       lat:-37.9841,lng:145.2161,type:'train',color:'#8b1a4a'},
-  {name:'Frankston',       lat:-38.1391,lng:145.1232,type:'train',color:'#159943'},
-  {name:'Werribee',        lat:-37.9014,lng:144.6604,type:'train',color:'#159943'},
-  {name:'Sunshine',        lat:-37.7871,lng:144.8310,type:'train',color:'#fc7f1e'},
-  {name:'Broadmeadows',    lat:-37.6815,lng:144.9176,type:'train',color:'#fc7f1e'},
-  {name:'Ringwood',        lat:-37.8116,lng:145.2276,type:'train',color:'#094c8d'},
-  {name:'St Kilda',        lat:-37.8649,lng:144.9785,type:'tram', color:'#f5a800'},
-  {name:'Melbourne Zoo',   lat:-37.7839,lng:144.9507,type:'tram', color:'#f5a800'},
-  {name:'Docklands',       lat:-37.8181,lng:144.9433,type:'tram', color:'#f5a800'},
-  {name:'South Melbourne Market',lat:-37.8380,lng:144.9522,type:'tram',color:'#f5a800'},
-];
+// Route lines and stations loaded from GTFS — no hardcoded data
+let gtfsRoutes = []; // [{routeId, name, mode, color, geojson}]
 
 // ── Avatar / Session ───────────────────────────────────────────────────
 const AVATAR_EMOJIS = ['🌸','⭐','🌙','🌊','🍄','🌿','🦋','✨','🎀','🍀','🎵','🌈','🍭','🦊','🐨'];
@@ -218,40 +158,51 @@ function mapReady(){
 }
 
 
-// ── Route polylines → Mapbox GeoJSON sources ───────────────────────────
-const routePolylines={}; // stores source-id strings for compat
-function buildRouteSources(){
-  ROUTES.forEach(([mode,line,color,label,pts])=>{
-    const id = 'route-'+line.replace(/\s+/g,'-');
+// ── Route polylines from GTFS ──────────────────────────────────────────
+const routePolylines={}; // routeId → layer id
+async function buildRouteSources(){
+  let fc;
+  try{ fc = await fetch('/api/gtfs/shapes').then(r=>r.json()); }
+  catch(e){ console.warn('Could not load GTFS shapes:', e); return; }
+  gtfsRoutes = fc.features.map(f=>({
+    routeId: f.properties.routeId,
+    name:    f.properties.name,
+    mode:    f.properties.mode,
+    color:   f.properties.color,
+    pts:     f.geometry.coordinates.map(([lng,lat])=>[lat,lng]),
+  }));
+  fc.features.forEach(f=>{
+    const { routeId, mode, color } = f.properties;
+    const id = 'route-' + routeId.replace(/\s+/g,'-');
     const weight  = mode==='train'?3.5:mode==='tram'?2.5:1.5;
     const opacity = mode==='bus'?0.3:0.45;
-    map.addSource(id,{
-      type:'geojson',
-      data:{type:'Feature',geometry:{type:'LineString',
-        coordinates:pts.map(p=>[p[1],p[0]])}}
-    });
+    if(map.getSource(id)) return; // already added
+    map.addSource(id,{ type:'geojson', data:f });
     map.addLayer({
       id, type:'line', source:id,
       layout:{'line-cap':'round','line-join':'round','visibility':'visible'},
       paint:{'line-color':color,'line-width':weight,'line-opacity':opacity}
     });
-    routePolylines[line]=id;
+    routePolylines[routeId]=id;
   });
 }
 function syncRouteLines(){
-  ROUTES.forEach(([mode,line])=>{
-    const id=routePolylines[line]; if(!id||!map.getLayer(id)) return;
-    const show=fModes.has(mode)&&fLines.has(line);
-    map.setLayoutProperty(id,'visibility',show?'visible':'none');
+  gtfsRoutes.forEach(({ routeId, mode, name })=>{
+    const id=routePolylines[routeId]; if(!id||!map.getLayer(id)) return;
+    const modeOk = fModes.has(mode);
+    map.setLayoutProperty(id,'visibility',modeOk?'visible':'none');
   });
 }
 
-// ── Stations ───────────────────────────────────────────────────────────
-function buildStations(){
-  STATIONS.forEach(s=>{
+// ── Stations from GTFS ─────────────────────────────────────────────────
+async function buildStations(){
+  let stations;
+  try{ stations = await fetch('/api/gtfs/stations').then(r=>r.json()); }
+  catch(e){ console.warn('Could not load GTFS stations:', e); return; }
+  stations.forEach(s=>{
     const el=document.createElement('div');
     el.className='station-dot';
-    el.style.cssText=`background:${s.color};cursor:pointer`;
+    el.style.cssText='background:#094c8d;cursor:pointer';
     el.title=s.name;
     new maplibregl.Marker({element:el,anchor:'center'}).setLngLat([s.lng,s.lat]).addTo(map);
   });
@@ -359,7 +310,6 @@ function updateNearestVehicle(){
 
 // ── Filter state ───────────────────────────────────────────────────────
 const fModes=new Set(['train','tram','bus','vline']);
-const fLines=new Set(ROUTES.map(r=>r[1]));
 let fSearch='';
 let showAll=false; // hidden on load; auto-shows at zoom ≥ 15
 
@@ -380,18 +330,7 @@ function buildFilterPanel(){
     body.appendChild(row);
   });
 
-  const ll=document.createElement('div');
-  ll.className='fp-section-label'; ll.textContent='Lines';
-  body.appendChild(ll);
-
-  ROUTES.forEach(([mode,line,color,label])=>{
-    const row=document.createElement('div');
-    row.className=`fp-line-row ${fLines.has(line)?'':'off'}`;
-    row.id=`lr-${CSS.escape(line)}`;
-    row.innerHTML=`<div class="fp-ldot" style="background:${color}"></div><span class="fp-lname">${label}</span><div class="fp-lchk ${fLines.has(line)?'on':''}" id="lc-${CSS.escape(line)}">✓</div>`;
-    row.addEventListener('click',()=>toggleLine(line));
-    body.appendChild(row);
-  });
+  // Per-line filter rows removed — route list now comes from GTFS (hundreds of routes)
 }
 
 function toggleMode(mode){
@@ -400,37 +339,24 @@ function toggleMode(mode){
   if(tog) tog.className=`fp-tog ${fModes.has(mode)?'on':''}`;
   applyFilters();
 }
-function toggleLine(line){
-  if(fLines.has(line)) fLines.delete(line); else fLines.add(line);
-  const chk=document.getElementById(`lc-${CSS.escape(line)}`);
-  const row=document.getElementById(`lr-${CSS.escape(line)}`);
-  if(chk) chk.className=`fp-lchk ${fLines.has(line)?'on':''}`;
-  if(row) row.className=`fp-line-row ${fLines.has(line)?'':'off'}`;
-  applyFilters();
-}
 function filterShowAll(){
-  ROUTES.forEach(([m,l])=>{fModes.add(m);fLines.add(l);});
   ['train','tram','bus','vline'].forEach(m=>fModes.add(m));
   buildFilterPanel(); applyFilters();
 }
 function filterClearAll(){
-  fModes.clear(); fLines.clear();
+  fModes.clear();
   buildFilterPanel(); applyFilters();
 }
-// Base filter: mode/proximity/line checks, always used for journey candidate finding
 function passesBaseFilter(v){
   if(!fModes.has(v.mode)) return false;
   if(!passesProximity(v)) return false;
-  if(v._live) return true;
-  return fLines.has(v.line);
+  return true;
 }
-// Display filter: always respects mode toggles; also gates on showAll or journey highlight
 function passesFilter(v){
-  if(!fModes.has(v.mode)) return false;      // mode toggles always honoured
+  if(!fModes.has(v.mode)) return false;
   if(!passesProximity(v)) return false;
-  if(!showAll && !journeyHighlightedIds.has(v.id)) return false; // search-first gate
-  if(v._live) return true;
-  return fLines.has(v.line);
+  if(!showAll && !journeyHighlightedIds.has(v.id)) return false;
+  return true;
 }
 function updateShowAllBtn(){
   const btn=document.getElementById('show-all-btn');
@@ -667,10 +593,10 @@ function startInterp(id,fromLat,fromLng,toLat,toLng,duration){
       }
     }
   }
-  // 2. Fall back to hardcoded ROUTES geometry
+  // 2. Fall back to GTFS shape geometry if available
   if(!pts && v){
-    const routeData=ROUTES.find(([,l])=>l===v.line);
-    if(routeData) pts=routeData[4];
+    const r=gtfsRoutes.find(r=>r.name===v.line||r.routeId===v.line);
+    if(r) pts=r.pts;
   }
   const waypoints=_buildWaypoints(fromLat,fromLng,toLat,toLng,pts);
   let total=0;
@@ -737,15 +663,7 @@ function toggleFollow(){
 })();
 
 map.on('zoom',()=>{
-  // Auto show/hide vehicles based on zoom level
   const z = map.getZoom();
-  if(z >= 15 && !showAll){
-    showAll = true;
-    updateShowAllBtn();
-  } else if(z < 13 && showAll){
-    showAll = false;
-    updateShowAllBtn();
-  }
   for(const id in markers){
     const m=markers[id]; const ip=interp[id];
     if(ip){
@@ -848,7 +766,7 @@ function upsert(v){
           let pts=null;
           if(v.run_ref && journeyRoutePaths.has(String(v.run_ref))) pts=journeyRoutePaths.get(String(v.run_ref));
           else if(v.line){ for(const[k,p] of journeyRoutePaths){ if(k===v.line){pts=p;break;} } }
-          if(!pts){const rd=ROUTES.find(([,l])=>l===v.line);if(rd) pts=rd[4];}
+          if(!pts){const r=gtfsRoutes.find(r=>r.name===v.line||r.routeId===v.line);if(r) pts=r.pts;}
           if(pts && pts.length>=2){
             let bestD=Infinity,bi=0;
             pts.forEach((p,i)=>{const d=(p[0]-v.lat)**2+(p[1]-v.lng)**2;if(d<bestD){bestD=d;bi=i;}});
@@ -1118,14 +1036,21 @@ function manualRefresh(){
 
 function spawnDemo(){
   const all=[]; let id=0;
-  ROUTES.forEach(([mode,line,color,label,pts])=>{
+  // Use GTFS shapes — limit to a representative subset per mode
+  const modeLimit={train:8,tram:6,bus:4,vline:2};
+  const modeCounts={train:0,tram:0,bus:0,vline:0};
+  for(const r of gtfsRoutes){
+    const {mode,name,color,pts}=r;
+    if(!pts||pts.length<2) continue;
+    if((modeCounts[mode]||0)>=(modeLimit[mode]||0)) continue;
+    modeCounts[mode]=(modeCounts[mode]||0)+1;
     const n=mode==='train'?4:mode==='tram'?5:3;
     for(let i=0;i<n;i++){
       const frac=i/n,total=pts.length-1,raw=frac*total;
       const seg=Math.min(Math.floor(raw),total-1),t=raw-seg;
-      const a=pts[seg],b=pts[seg+1];
+      const a=pts[seg],b=pts[Math.min(seg+1,pts.length-1)];
       all.push({
-        id:`demo_${id++}`,mode,line,color,label,dest:'',
+        id:`demo_${id++}`,mode,line:name,color,label:name,dest:'',
         lat:a[0]+(b[0]-a[0])*t,lng:a[1]+(b[1]-a[1])*t,
         pts,seg,t,fwd:i%2===0,
         delay:Math.floor(Math.random()*7),
@@ -1133,7 +1058,7 @@ function spawnDemo(){
         bearing:Math.random()*360,_live:false,occupancy:null
       });
     }
-  });
+  }
   return all;
 }
 
@@ -1186,7 +1111,8 @@ async function init(){
   // Map-specific setup — waits for load but has a 5s timeout so it never hangs
   try {
     await mapReady();
-    buildStations();
+    await buildRouteSources();
+    await buildStations();
 
     const loc = await locateUser();
     if(loc){
@@ -1226,11 +1152,13 @@ async function init(){
 // ── ADDRESS SEARCH ──────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════
 
-// _searchTimer removed — search now handled by <mapbox-search-box> web component
 let destLoc = null;           // {lat, lng, name}
 let destMarker = null;
 let journeyLine = null;       // Placeholder dashed straight line
 let journeyPolyline = null;   // Real route polyline from API
+let _journeyLegLayerCount = 0; // Number of dynamic journey-leg-N layers currently on map
+let allJourneys = [];          // All journey options returned by server
+let activeJourneyIdx = 0;      // Which option is selected
 let activeJourney = null;     // Best journey object from /api/journey
 const journeyHighlightedIds = new Set();
 // Maps run_ref/line → [[lat,lng],...] from /api/journey response
@@ -1326,15 +1254,6 @@ function selectAddrResult(lat, lng, name, fullAddr){
   // Fetch real route from server
   if(userLoc){
     fetchAndActivateJourney(userLoc.lat, userLoc.lng, +lat, +lng, name);
-    // Also trigger Valhalla navigation overlay if navigation.js is loaded
-    if(typeof window.startNavigation === 'function'){
-      window.startNavigation(
-        {lng: userLoc.lng, lat: userLoc.lat},
-        {lng: +lng, lat: +lat},
-        name,
-        'pedestrian'
-      );
-    }
   } else {
     updateJourneyVehicles();
   }
@@ -1363,6 +1282,8 @@ async function fetchAndActivateJourney(fromLat, fromLng, toLat, toLng, toName){
       return;
     }
 
+    allJourneys = journeys;
+    activeJourneyIdx = 0;
     activeJourney = journeys[0];
 
     // Index all routePaths for vehicle animation matching
@@ -1375,11 +1296,8 @@ async function fetchAndActivateJourney(fromLat, fromLng, toLat, toLng, toName){
       });
     });
 
-    // Draw real route polyline and fit bounds
     updateJourneyPolyline();
-    // Update bottom sheet with real data
     showJourneyBottomSheet(activeJourney);
-    // Fuzzy-match and highlight vehicles
     updateJourneyVehicles();
 
   }catch(e){
@@ -1389,112 +1307,217 @@ async function fetchAndActivateJourney(fromLat, fromLng, toLat, toLng, toName){
   }
 }
 
-function updateJourneyPolyline(){
-  // Hide any existing real-route layer
+function selectJourneyOption(idx){
+  if(!allJourneys[idx]) return;
+  activeJourneyIdx = idx;
+  activeJourney = allJourneys[idx];
+  // Refresh tab highlight
+  document.querySelectorAll('.jbs-opt').forEach((el,i) => el.classList.toggle('active', i===idx));
+  updateJourneyPolyline();
+  showJourneyBottomSheet(activeJourney, true); // true = skip re-rendering tabs
+  updateJourneyVehicles();
+}
+
+function startJourneyGo(){
+  // Placeholder for navigation mode — will expand later
+  showToast('Navigation mode coming soon!');
+}
+
+function clearJourneyLayers(){
+  for(let i = 0; i < _journeyLegLayerCount + 1; i++){
+    const id = `journey-leg-${i}`;
+    if(map.getLayer(id)) map.removeLayer(id);
+    if(map.getSource(id)) map.removeSource(id);
+  }
+  _journeyLegLayerCount = 0;
   if(map.getLayer('journey-route')) map.setLayoutProperty('journey-route','visibility','none');
+}
+
+function updateJourneyPolyline(){
+  clearJourneyLayers();
   journeyPolyline = null;
   if(!activeJourney) return;
 
-  const transitLeg = (activeJourney.legs||[]).find(l=>l.type!=='walk'&&l.routePath&&l.routePath.length>=2);
-  if(!transitLeg) return;
+  const legs = activeJourney.legs || [];
+  if(!legs.length) return;
 
-  const pts = transitLeg.routePath; // [[lat,lng],...]
-  const coords = pts.map(p=>[p[1],p[0]]); // → [lng,lat] for GeoJSON
-  const color = transitLeg.color || '#5b8dee';
-  const geojson = {type:'Feature',geometry:{type:'LineString',coordinates:coords}};
+  const LEG_COLORS = {
+    train: '#094c8d',
+    tram:  '#2CA05A',
+    bus:   '#F5A623',
+    vline: '#6c3483',
+    walk:  '#888888',
+  };
 
-  if(map.getSource('journey-route')){
-    map.getSource('journey-route').setData(geojson);
-    map.setPaintProperty('journey-route','line-color',color);
-    map.setLayoutProperty('journey-route','visibility','visible');
-  } else {
-    map.addSource('journey-route',{type:'geojson',data:geojson});
-    map.addLayer({id:'journey-route',type:'line',source:'journey-route',
-      layout:{'line-cap':'round','line-join':'round','visibility':'visible'},
-      paint:{'line-color':color,'line-width':5,'line-opacity':0.85}});
+  let layerCount = 0;
+  const allPts = [];
+
+  const addSegment = (coords, color, isWalk) => {
+    if(!coords || coords.length < 2) return;
+    const id = `journey-leg-${layerCount++}`;
+    map.addSource(id, {type:'geojson', data:{type:'Feature',geometry:{type:'LineString',coordinates:coords}}});
+    map.addLayer({
+      id, type:'line', source:id,
+      layout:{'line-cap':'round','line-join':'round'},
+      paint:{
+        'line-color': color,
+        'line-width': isWalk ? 3 : 5,
+        'line-opacity': isWalk ? 0.65 : 0.88,
+        ...(isWalk ? {'line-dasharray':[3, 3]} : {}),
+      }
+    });
+    allPts.push(...coords);
+  };
+
+  for(const leg of legs){
+    const isWalk = leg.type === 'walk';
+    if(isWalk){
+      // Use Valhalla walking path if server returned one, else straight line
+      if(leg.walkPath && leg.walkPath.length >= 2){
+        addSegment(leg.walkPath, LEG_COLORS.walk, true);
+      } else if(leg.fromLat != null && leg.toLat != null){
+        const same = Math.abs(leg.fromLat - leg.toLat) < 1e-5 && Math.abs(leg.fromLng - leg.toLng) < 1e-5;
+        if(!same) addSegment([[leg.fromLng, leg.fromLat],[leg.toLng, leg.toLat]], LEG_COLORS.walk, true);
+      }
+    } else {
+      // Transit leg — routePath is [[lat,lng],...] from GTFS
+      if(leg.routePath && leg.routePath.length >= 2){
+        const coords = leg.routePath.map(p => [p[1], p[0]]); // [lat,lng] → [lng,lat]
+        addSegment(coords, LEG_COLORS[leg.type] || leg.color || '#5b8dee', false);
+      }
+    }
   }
-  journeyPolyline = true; // flag: real route layer active
 
-  // Hide placeholder dashed line
+  _journeyLegLayerCount = layerCount;
+  journeyPolyline = true;
+
   if(map.getLayer('journey-placeholder'))
     map.setLayoutProperty('journey-placeholder','visibility','none');
   journeyLine = false;
 
-  // Fit bounds to show the whole route
-  const allCoords = [
-    ...(userLoc ? [[userLoc.lng,userLoc.lat]] : []),
-    ...coords,
-    [destLoc.lng,destLoc.lat]
-  ];
-  const bounds = allCoords.reduce((b,c)=>b.extend(c), new maplibregl.LngLatBounds(allCoords[0],allCoords[0]));
-  map.fitBounds(bounds,{padding:50,maxZoom:15,animate:true});
+  if(allPts.length > 0){
+    // Switch to birds-eye for route clarity, then fit
+    map.easeTo({pitch:0, bearing:0, duration:600});
+    setTimeout(() => {
+      const bounds = allPts.reduce((b,c) => b.extend(c), new maplibregl.LngLatBounds(allPts[0], allPts[0]));
+      map.fitBounds(bounds, {padding:70, maxZoom:15, animate:true});
+    }, 650);
+  }
 }
 
 function showJourneyBottomSheetLoading(destName){
   const sheet = document.getElementById('journey-bottom-sheet');
   if(!sheet) return;
   document.getElementById('jbs-dest').textContent = `To: ${destName}`;
-  document.getElementById('jbs-mode-pill').textContent = '🗺';
-  document.getElementById('jbs-mode-pill').style.background = '#5b8dee';
-  document.getElementById('jbs-route-name').textContent = 'Finding route…';
-  document.getElementById('jbs-route-sub').textContent = '';
-  document.getElementById('jbs-duration').textContent = '—';
-  document.getElementById('jbs-depart-time').textContent = '—';
-  document.getElementById('jbs-walk-time').textContent = '—';
-  document.getElementById('jbs-next-stop').textContent = 'Calculating…';
+  const pill = document.getElementById('jbs-mode-pill');
+  if(pill){ pill.textContent = '🗺'; pill.style.background = '#5b8dee'; }
+  const rn = document.getElementById('jbs-route-name');
+  if(rn) rn.textContent = 'Finding route…';
+  const dur = document.getElementById('jbs-duration');
+  if(dur) dur.textContent = '—';
+  const dep = document.getElementById('jbs-depart-time');
+  if(dep) dep.textContent = '—';
+  const legs = document.getElementById('jbs-legs');
+  if(legs) legs.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:.8rem;font-weight:700;text-align:center">Calculating…</div>';
   sheet.classList.add('show');
 }
 
-function showJourneyBottomSheet(journey){
+function showJourneyBottomSheet(journey, skipTabs=false){
   const sheet = document.getElementById('journey-bottom-sheet');
   if(!sheet) return;
   sheet.classList.add('show');
 
   if(destLoc) document.getElementById('jbs-dest').textContent = `To: ${destLoc.name}`;
 
+  const MODE_EMOJI = {train:'🚆',tram:'🚊',bus:'🚌',vline:'🚂',walk:'🚶'};
+  const LEG_COLORS = {train:'#094c8d',tram:'#2CA05A',bus:'#F5A623',vline:'#6c3483'};
+
   if(!journey){
     const pill = document.getElementById('jbs-mode-pill');
-    pill.style.background = '#aaa';
-    pill.textContent = '🔍';
-    document.getElementById('jbs-route-name').textContent = 'No direct route found';
-    document.getElementById('jbs-route-sub').textContent = 'Showing nearest vehicles instead';
-    document.getElementById('jbs-duration').textContent   = '—';
-    document.getElementById('jbs-depart-time').textContent = '—';
-    document.getElementById('jbs-walk-time').textContent   = '—';
-    document.getElementById('jbs-next-stop').textContent   = '—';
+    if(pill){ pill.style.background='#aaa'; pill.textContent='🔍'; }
+    const rn = document.getElementById('jbs-route-name');
+    if(rn) rn.textContent = 'No route found';
+    const dur = document.getElementById('jbs-duration');
+    if(dur) dur.textContent = '—';
+    const dep = document.getElementById('jbs-depart-time');
+    if(dep) dep.textContent = '—';
+    const legsEl = document.getElementById('jbs-legs');
+    if(legsEl) legsEl.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:.8rem;font-weight:700;text-align:center">Try a different destination</div>';
     return;
   }
 
-  const transitLeg = (journey.legs||[]).find(l=>l.type!=='walk');
-  const walkLeg    = (journey.legs||[]).find(l=>l.type==='walk');
+  const legs = journey.legs || [];
+  const transitLegs = legs.filter(l => l.type !== 'walk');
+  const firstTransit = transitLegs[0];
+  const totalWalk = legs.filter(l=>l.type==='walk').reduce((s,l)=>s+(l.duration||0),0);
 
-  if(transitLeg){
-    const modeEmoji = {train:'🚆',tram:'🚊',bus:'🚌',vline:'🚂'}[transitLeg.type]||'🚌';
-    const stopCount = transitLeg.routePath?.length > 1 ? `${transitLeg.routePath.length - 1} stops` : '';
-    const pill = document.getElementById('jbs-mode-pill');
-    pill.style.background = transitLeg.color || '#5b8dee';
-    pill.textContent = modeEmoji;
-    document.getElementById('jbs-route-name').textContent =
-      [transitLeg.line, stopCount].filter(Boolean).join(' · ');
-    document.getElementById('jbs-route-sub').textContent =
-      transitLeg.minsUntilDep != null ? `Departs in ${transitLeg.minsUntilDep} min` :
-      transitLeg.delay > 0 ? `${transitLeg.delay} min late` : 'On time';
-    document.getElementById('jbs-duration').textContent    = journey.duration || '—';
-    document.getElementById('jbs-depart-time').textContent = transitLeg.depart || '—';
-    document.getElementById('jbs-walk-time').textContent   = walkLeg ? walkLeg.duration : '—';
-    document.getElementById('jbs-next-stop').textContent   = transitLeg.from || '—';
-  } else {
-    // Walk-only
-    const pill = document.getElementById('jbs-mode-pill');
-    pill.style.background = '#4ecdc4';
-    pill.textContent = '🚶';
-    document.getElementById('jbs-route-name').textContent  = 'Walk only';
-    document.getElementById('jbs-route-sub').textContent   = `${journey.duration || '?'} min walk`;
-    document.getElementById('jbs-duration').textContent    = journey.duration || '—';
-    document.getElementById('jbs-depart-time').textContent = 'Now';
-    document.getElementById('jbs-walk-time').textContent   = journey.duration || '—';
-    document.getElementById('jbs-next-stop').textContent   = destLoc?.name || '—';
+  // Summary row
+  const pill = document.getElementById('jbs-mode-pill');
+  if(pill){
+    if(firstTransit){ pill.style.background = LEG_COLORS[firstTransit.type]||'#5b8dee'; pill.textContent = MODE_EMOJI[firstTransit.type]||'🚌'; }
+    else { pill.style.background='#4ecdc4'; pill.textContent='🚶'; }
   }
+  const dur = document.getElementById('jbs-duration');
+  if(dur) dur.textContent = `${journey.duration||'?'} min`;
+  const rn = document.getElementById('jbs-route-name');
+  if(rn) rn.textContent = firstTransit ? `via ${firstTransit.line||firstTransit.type}` : 'Walk only';
+  const dep = document.getElementById('jbs-depart-time');
+  if(dep) dep.textContent = journey.depart ? `Departs ${journey.depart}` : 'Now';
+
+  // Option tabs (only render on first load, not when switching tabs)
+  if(!skipTabs){
+    const optsEl = document.getElementById('jbs-options');
+    if(optsEl && allJourneys.length > 1){
+      optsEl.innerHTML = allJourneys.map((j,i) => {
+        const tl = (j.legs||[]).find(l=>l.type!=='walk');
+        const icon = tl ? (MODE_EMOJI[tl.type]||'🚌') : '🚶';
+        const color = tl ? (LEG_COLORS[tl.type]||'#5b8dee') : '#888';
+        const label = tl ? (tl.line||tl.type) : 'Walk';
+        return `<button class="jbs-opt${i===activeJourneyIdx?' active':''}" style="color:${color}" onclick="selectJourneyOption(${i})">
+          <span class="jbs-opt-icon">${icon}</span>
+          <span>${escHtml(label)}</span>
+          <span class="jbs-opt-time">${j.duration||'?'}m</span>
+        </button>`;
+      }).join('');
+    } else if(optsEl){
+      optsEl.innerHTML = '';
+    }
+  }
+
+  // Show Go button if we have a real route
+  const goBtn = document.getElementById('jbs-go-btn');
+  if(goBtn) goBtn.style.display = journey ? 'block' : 'none';
+
+  // Step-by-step legs
+  const legsEl = document.getElementById('jbs-legs');
+  if(!legsEl) return;
+
+  legsEl.innerHTML = legs.map(leg => {
+    const isWalk = leg.type === 'walk';
+    const color  = isWalk ? '#888' : (LEG_COLORS[leg.type]||'#5b8dee');
+    const emoji  = MODE_EMOJI[leg.type] || '🚌';
+    const iconCls = isWalk ? 'walk' : 'transit';
+    const iconStyle = isWalk ? '' : `background:${color}`;
+
+    let title, sub;
+    if(isWalk){
+      title = `Walk to ${escHtml(leg.to||'stop')}`;
+      sub   = `${leg.duration||'?'} min`;
+    } else {
+      const sc = leg.stopCount || 0;
+      const stopsStr = sc > 0 ? `${sc} stop${sc !== 1 ? 's' : ''} · ` : '';
+      title = `${escHtml(leg.line||leg.type)} — board at ${escHtml(leg.from||'')}`;
+      sub   = `${stopsStr}${leg.duration||'?'} min${leg.minsUntilDep > 0 ? ` · departs in ${leg.minsUntilDep} min` : ''}`;
+    }
+
+    return `<div class="jbs-leg">
+      <div class="jbs-leg-icon ${iconCls}" style="${iconStyle}">${emoji}</div>
+      <div class="jbs-leg-body">
+        <div class="jbs-leg-title">${title}</div>
+        <div class="jbs-leg-sub">${sub}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function placeDestPin(lat, lng, name, fullAddr){
@@ -1773,15 +1796,19 @@ function clearDestination(){
     journeyLine=false;
   }
   if(journeyPolyline){
-    if(map.getLayer('journey-route')) map.setLayoutProperty('journey-route','visibility','none');
+    clearJourneyLayers();
     journeyPolyline=null;
   }
   clearJourneyHighlights();
   journeyRoutePaths.clear();
   activeJourney = null;
+  allJourneys = [];
+  activeJourneyIdx = 0;
   destLoc = null;
   const sheet = document.getElementById('journey-bottom-sheet');
   if(sheet) sheet.classList.remove('show');
+  // Restore isometric view
+  map.easeTo({pitch:45, bearing:-15, duration:800});
 }
 
 // Refresh journey vehicle highlights on each data update

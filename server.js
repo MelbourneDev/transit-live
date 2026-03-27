@@ -8,6 +8,7 @@ const crypto     = require('crypto');
 const fs         = require('fs');
 const nodemailer = require('nodemailer');
 const jwt        = require('jsonwebtoken');
+const gtfs       = require('./gtfs');
 
 const app     = express();
 const PORT    = process.env.PORT || 3000;
@@ -51,8 +52,13 @@ function authMiddleware(req, res, next) {
 
 app.use(cors());
 app.use(express.json());
-// Serve static files but NOT index.html — that's served dynamically with token injection
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+// Serve local PMTiles file
+app.get('/melbourne.pmtiles', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Accept-Ranges', 'bytes');
+  res.sendFile(path.join(__dirname, 'melbourne.pmtiles'));
+});
 
 // ── Inline GTFS-RT protobuf schema ───────────────────────────────────────────
 const PROTO = `
@@ -178,7 +184,7 @@ const LINE_COLORS = {
   '11':'#fc7f1e','12':'#fc7f1e','13':'#fc7f1e',
   '14':'#e1261c','15':'#e1261c',
 };
-const MODE_COLOR = { train:'#094c8d', tram:'#f5a800', bus:'#7b5ea7', vline:'#6c3483' };
+const MODE_COLOR = { train:'#094c8d', tram:'#2CA05A', bus:'#F5A623', vline:'#6c3483' };
 
 // ── Fetch a single feed ───────────────────────────────────────────────────────
 async function fetchFeed(url) {
@@ -189,23 +195,15 @@ async function fetchFeed(url) {
     },
     timeout: 8000,
   });
-
   if (!res.ok) {
     const body = await res.text();
     if (body.includes('MessageBlocked')) {
-      throw new Error(`API_SUBSCRIPTION_REQUIRED: Key accepted but not subscribed to GTFS-R product.`);
+      throw new Error('API_SUBSCRIPTION_REQUIRED');
     }
-    throw new Error(`HTTP ${res.status} from ${url}`);
+    throw new Error('HTTP ' + res.status + ' from ' + url);
   }
-
-  const contentType = res.headers.get('content-type') || '';
-  if (contentType.includes('text') || contentType.includes('html') || contentType.includes('xml')) {
-    const body = await res.text();
-    throw new Error(`Expected protobuf but got text response: ${body.slice(0, 100)}`);
-  }
-
   const buf = await res.arrayBuffer();
-  console.log(`  ✓ ${url.split('/').pop()} — ${buf.byteLength} bytes`);
+  console.log('Feed:', url.split('/').pop(), buf.byteLength, 'bytes');
   return decode(Buffer.from(buf));
 }
 
@@ -429,176 +427,169 @@ function haversine(lat1, lng1, lat2, lng2) {
 }
 
 
-// ── POST /api/journey ─────────────────────────────────────────────────────────
-// Accepts: { fromLat, fromLng, toLat, toLng, fromName?, toName? }
-app.post('/api/journey', async (req, res) => {
-  const { from, to, time } = req.body || {};
-  let { fromLat, fromLng, toLat, toLng } = req.body || {};
-
-  // Require coordinate input
-  if (fromLat && fromLng && toLat && toLng) {
-    fromLat = parseFloat(fromLat); fromLng = parseFloat(fromLng);
-    toLat   = parseFloat(toLat);   toLng   = parseFloat(toLng);
-  } else {
-    return res.status(400).json({ error: 'Provide fromLat/fromLng/toLat/toLng' });
+// ── Valhalla walk-path enrichment ────────────────────────────────────────────
+// For every walk leg in every journey, fire a Valhalla pedestrian request and
+// attach walkPath: [[lat,lng],...] so the frontend can draw real road geometry.
+async function valhallaWalkPath(fromLat, fromLng, toLat, toLng) {
+  try {
+    const body = {
+      locations: [
+        { lon: fromLng, lat: fromLat, type: 'break' },
+        { lon: toLng,   lat: toLat,   type: 'break' },
+      ],
+      costing: 'pedestrian',
+      directions_options: { units: 'kilometres' },
+    };
+    const r = await fetch(`${VALHALLA_URL}/route`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) {
+      console.warn(`[Valhalla] HTTP ${r.status}`);
+      return null;
+    }
+    const data = await r.json();
+    const shape = data.trip?.legs?.[0]?.shape;
+    if (!shape) {
+      console.warn('[Valhalla] response missing shape:', JSON.stringify(data).slice(0,200));
+      return null;
+    }
+    return decodePolyline6(shape);
+  } catch (e) {
+    console.warn('[Valhalla] fetch error:', e.message);
+    return null;
   }
+}
 
-  const fromName = req.body.fromName || from || `${fromLat.toFixed(4)},${fromLng.toFixed(4)}`;
-  const toName   = req.body.toName   || to   || `${toLat.toFixed(4)},${toLng.toFixed(4)}`;
-  const rtMap    = { 0: 'train', 1: 'tram', 2: 'bus', 3: 'vline' };
+function decodePolyline6(encoded) {
+  const coords = [];
+  let index = 0, lat = 0, lng = 0;
+  while (index < encoded.length) {
+    let b, shift = 0, result = 0;
+    do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lat += (result & 1) ? ~(result >> 1) : result >> 1;
+    shift = 0; result = 0;
+    do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lng += (result & 1) ? ~(result >> 1) : result >> 1;
+    coords.push([lng / 1e6, lat / 1e6]); // [lng,lat] for GeoJSON
+  }
+  return coords;
+}
 
-  // ── PTV live routing ──────────────────────────────────────────────────
-  if (PTV_DEV_ID && PTV_API_KEY) {
-    try {
-      // 1. Find nearest stops to from and to coordinates
-      const [fromStops, toStops] = await Promise.all([
-        ptvFetch(`/v3/stops/location/${fromLat},${fromLng}?route_types=0,1,2,3&max_results=10&max_distance=1000`),
-        ptvFetch(`/v3/stops/location/${toLat},${toLng}?route_types=0,1,2,3&max_results=10&max_distance=1000`),
-      ]);
-
-      // Sort by distance, prefer train stops for longer trips
-      const directKmPrecheck = haversine(fromLat, fromLng, toLat, toLng);
-      const preferTrain = directKmPrecheck > 3;
-      const sortStops = (stops) => (stops || []).sort((a, b) => {
-        const aScore = (preferTrain && a.route_type === 0) ? -0.3 : 0;
-        const bScore = (preferTrain && b.route_type === 0) ? -0.3 : 0;
-        const aDist  = haversine(fromLat, fromLng, a.stop_latitude || fromLat, a.stop_longitude || fromLng);
-        const bDist  = haversine(fromLat, fromLng, b.stop_latitude || fromLat, b.stop_longitude || fromLng);
-        return (aDist + aScore) - (bDist + bScore);
-      });
-
-      const nearFromStops = sortStops(fromStops.stops).slice(0, 5);
-      const nearToStops   = (toStops.stops   || []).slice(0, 8); // keep more to-stops for matching
-
-      if (!nearFromStops.length || !nearToStops.length) throw new Error('No stops near locations');
-
-      const journeys = [];
-
-      // 2. For each candidate from-stop, get upcoming departures
-      for (const fromStop of nearFromStops) {
-        if (journeys.length >= 3) break;
-        try {
-          const deps = await ptvFetch(
-            `/v3/departures/route_type/${fromStop.route_type}/stop/${fromStop.stop_id}` +
-            `?max_results=12&expand=run,route&include_cancelled=false`
-          );
-
-          const now = Date.now();
-
-          for (const dep of (deps.departures || []).slice(0, 6)) {
-            if (journeys.length >= 3) break;
-            const route = (deps.routes || {})[dep.route_id] || {};
-            const modeStr = rtMap[fromStop.route_type] || 'bus';
-            const scheduledDep = dep.scheduled_departure_utc ? new Date(dep.scheduled_departure_utc) : new Date();
-            const estDep       = dep.estimated_departure_utc ? new Date(dep.estimated_departure_utc) : scheduledDep;
-            const delaySec     = Math.max(0, (estDep - scheduledDep) / 1000);
-            const minsUntilDep = Math.max(0, Math.round((estDep - now) / 60000));
-
-            // 3. Get full stop pattern for this run to find if it passes near destination
-            let routePath = [];
-            let toStopName = toName;
-            let transitMin = Math.round(
-              haversine(fromLat, fromLng, toLat, toLng) /
-              (modeStr === 'train' ? 1.0 : modeStr === 'tram' ? 0.42 : 0.45) * 60
-            ) + 2;
-
-            try {
-              const pattern = await ptvFetch(
-                `/v3/patterns/run/${dep.run_ref}/route_type/${fromStop.route_type}?expand=stop`
-              );
-              const stops = (pattern.stops || []);
-
-              // Find from-stop index and closest stop to destination
-              let fromIdx = stops.findIndex(s => s.stop_id === fromStop.stop_id);
-              if (fromIdx < 0) fromIdx = 0;
-
-              let bestToIdx = -1, bestToDist = Infinity;
-              for (const toStop of nearToStops) {
-                const idx = stops.findIndex(s => s.stop_id === toStop.stop_id);
-                if (idx > fromIdx) {
-                  const d = haversine(toStop.stop_latitude, toStop.stop_longitude, toLat, toLng);
-                  if (d < bestToDist) { bestToDist = d; bestToIdx = idx; toStopName = toStop.stop_name; }
-                }
-              }
-              // If exact to-stop not in run, find nearest stop to destination along run
-              if (bestToIdx < 0) {
-                stops.slice(fromIdx + 1).forEach((s, i) => {
-                  if (!s.stop_latitude) return;
-                  const d = haversine(s.stop_latitude, s.stop_longitude, toLat, toLng);
-                  if (d < bestToDist && d < 5.0) { // 5km radius
-                    bestToDist = d;
-                    bestToIdx = fromIdx + 1 + i;
-                    toStopName = s.stop_name;
-                  }
-                });
-              }
-
-              if (bestToIdx > fromIdx) {
-                const legStops = stops.slice(fromIdx, bestToIdx + 1);
-                routePath = legStops
-                  .filter(s => s.stop_latitude && s.stop_longitude)
-                  .map(s => [s.stop_latitude, s.stop_longitude]);
-                // Rough transit time from number of stops
-                transitMin = Math.max(3, Math.round(legStops.length * (modeStr === 'train' ? 2 : 3)));
-              }
-            } catch (patternErr) {
-              // Pattern fetch failed — use straight-line estimate
+async function enrichWalkLegs(journeys) {
+  const tasks = [];
+  for (const journey of journeys) {
+    for (const leg of journey.legs) {
+      if (leg.type !== 'walk') continue;
+      if (leg.fromLat == null || leg.toLat == null) continue;
+      if (Math.abs(leg.fromLat - leg.toLat) < 1e-5 && Math.abs(leg.fromLng - leg.toLng) < 1e-5) continue;
+      tasks.push(
+        valhallaWalkPath(leg.fromLat, leg.fromLng, leg.toLat, leg.toLng)
+          .then(path => {
+            if (path) {
+              leg.walkPath = path;
+            } else {
+              console.warn(`[Valhalla] No walk path (${leg.fromLat.toFixed(4)},${leg.fromLng.toFixed(4)}) → (${leg.toLat.toFixed(4)},${leg.toLng.toFixed(4)})`);
             }
+          })
+      );
+    }
+  }
+  await Promise.allSettled(tasks);
+}
 
-            const walkDistM = haversine(fromLat, fromLng, fromStop.stop_latitude || fromLat, fromStop.stop_longitude || fromLng) * 1000;
-            const walkMin   = Math.max(1, Math.round(walkDistM / 80));
-            const totalMin  = walkMin + minsUntilDep + transitMin + 3;
+// ── GET /api/gtfs/shapes — real route lines for map display ──────────────────
+// Returns one representative GeoJSON LineString per route (train + tram only).
+app.get('/api/gtfs/shapes', (req, res) => {
+  if (!gtfs.isLoaded()) return res.json({ type: 'FeatureCollection', features: [] });
 
-            journeys.push({
-              duration: totalMin,
-              transfers: 0,
-              depart: estDep.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }),
-              legs: [
-                { type: 'walk', from: fromName, to: fromStop.stop_name, duration: walkMin },
-                {
-                  type: modeStr,
-                  line: route.route_number || route.route_name || String(dep.route_id),
-                  color: MODE_COLOR[modeStr] || '#094c8d',
-                  from: fromStop.stop_name,
-                  to: toStopName,
-                  duration: transitMin,
-                  depart: estDep.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }),
-                  minsUntilDep,
-                  delay: Math.max(0, Math.round(delaySec / 60)),
-                  routePath,            // ← real stop-sequence coordinates for path animation
-                  run_ref: dep.run_ref, // ← for matching against live vehicle feed
-                },
-                { type: 'walk', from: toStopName, to: toName, duration: 3 },
-              ],
-            });
-          }
-        } catch (stopErr) {
-          console.warn(`  ✗ PTV departures for stop ${fromStop.stop_id}: ${stopErr.message}`);
-        }
-      }
+  const { _debug: { routes, trips, shapeCache } } = gtfs;
+  const MODE_COLOR = { train: '#094c8d', tram: '#2CA05A', bus: '#F5A623', vline: '#6c3483' };
 
-      if (journeys.length > 0) {
-        console.log(`  ✓ PTV journey: ${journeys.length} options from (${fromLat},${fromLng}) → (${toLat},${toLng})`);
-        return res.json({
-          mode: 'live',
-          from: { lat: fromLat, lng: fromLng, name: fromName },
-          to:   { lat: toLat,   lng: toLng,   name: toName },
-          journeys,
-        });
-      }
-      console.warn(`  ✗ PTV found ${nearFromStops.length} from-stops, ${nearToStops.length} to-stops but built 0 journeys — falling back`);
-    } catch (e) {
-      console.warn('PTV journey planning failed, using fallback:', e.message);
+  // Build route_id → best shape_id (longest shape wins)
+  const routeBestShape = new Map(); // route_id → {shapeId, len, mode, shortName, longName}
+  for (const trip of trips.values()) {
+    if (trip.mode !== 'train' && trip.mode !== 'tram') continue;
+    if (!trip.shapeId || !shapeCache.has(trip.shapeId)) continue;
+    const len = shapeCache.get(trip.shapeId).length;
+    const existing = routeBestShape.get(trip.routeId);
+    if (!existing || len > existing.len) {
+      const route = routes.get(trip.routeId);
+      routeBestShape.set(trip.routeId, {
+        shapeId: trip.shapeId, len, mode: trip.mode,
+        name: route ? (route.shortName || route.longName) : trip.routeId,
+        color: MODE_COLOR[trip.mode] || '#888',
+      });
     }
   }
 
-  // ── Fallback: no PTV keys configured ──────────────────────────────────
-  res.json({
-    mode: 'fallback',
-    from: { lat: fromLat, lng: fromLng, name: fromName },
-    to:   { lat: toLat,   lng: toLng,   name: toName },
-    journeys: [],
-  });
+  const features = [];
+  for (const [routeId, info] of routeBestShape) {
+    const coords = shapeCache.get(info.shapeId);
+    if (!coords || coords.length < 2) continue;
+    features.push({
+      type: 'Feature',
+      properties: { routeId, name: info.name, mode: info.mode, color: info.color },
+      geometry: { type: 'LineString', coordinates: coords.map(([lat, lng]) => [lng, lat]) },
+    });
+  }
+
+  res.json({ type: 'FeatureCollection', features });
+});
+
+// ── GET /api/gtfs/stations — real train stations for map dots ─────────────────
+app.get('/api/gtfs/stations', (req, res) => {
+  if (!gtfs.isLoaded()) return res.json([]);
+
+  const { _debug: { stops, stopTrips } } = gtfs;
+  const stations = [];
+  for (const s of stops.values()) {
+    if (s.mode !== 'train') continue;
+    if (!stopTrips.has(s.id)) continue;
+    // Only include named station stops (skip platforms/sub-entries)
+    if (!s.name.toLowerCase().includes('station')) continue;
+    stations.push({ id: s.id, name: s.name, lat: s.lat, lng: s.lng });
+  }
+  res.json(stations);
+});
+
+// ── POST /api/journey ─────────────────────────────────────────────────────────
+// Accepts: { fromLat, fromLng, toLat, toLng, fromName?, toName? }
+app.post('/api/journey', async (req, res) => {
+  let { fromLat, fromLng, toLat, toLng } = req.body || {};
+  if (!fromLat || !fromLng || !toLat || !toLng)
+    return res.status(400).json({ error: 'Provide fromLat/fromLng/toLat/toLng' });
+
+  fromLat = parseFloat(fromLat); fromLng = parseFloat(fromLng);
+  toLat   = parseFloat(toLat);   toLng   = parseFloat(toLng);
+  const fromName = req.body.fromName || 'Your location';
+  const toName   = req.body.toName   || 'Destination';
+
+  if (!gtfs.isLoaded())
+    return res.json({ mode: 'fallback', from: { lat: fromLat, lng: fromLng, name: fromName },
+                      to: { lat: toLat, lng: toLng, name: toName }, journeys: [] });
+
+  try {
+    const journeys = gtfs.planJourney(fromLat, fromLng, toLat, toLng, fromName, toName);
+    if (!journeys.length) throw new Error('No routes found');
+
+    // Enrich walk legs with real Valhalla walking paths (fire all requests in parallel)
+    await enrichWalkLegs(journeys);
+
+    console.log(`  ✓ GTFS journey: ${journeys.length} options (${fromLat},${fromLng}) → (${toLat},${toLng})`);
+    return res.json({
+      mode:     'live',
+      from:     { lat: fromLat, lng: fromLng, name: fromName },
+      to:       { lat: toLat,   lng: toLng,   name: toName },
+      journeys,
+    });
+  } catch (e) {
+    console.warn('GTFS journey failed:', e.message);
+    return res.json({ mode: 'fallback', from: { lat: fromLat, lng: fromLng, name: fromName },
+                      to: { lat: toLat, lng: toLng, name: toName }, journeys: [] });
+  }
 });
 
 // ── GET /api/journey/autocomplete?q=X ────────────────────────────────────────
@@ -606,7 +597,7 @@ app.get('/api/journey/autocomplete', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json([]);
   try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&countrycodes=au&viewbox=144.5,-38.5,145.8,-37.3&bounded=1&limit=6&format=json`;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q + ' Melbourne VIC')}&countrycodes=au&limit=6&format=json`;
     const r = await fetch(url, { headers: { 'User-Agent': 'Transit-Live-Melbourne/1.0' } });
     const data = await r.json();
     res.json(data.map(item => ({
@@ -647,8 +638,15 @@ app.get('/api/departures', async (req, res) => {
     }
   }
 
-  // Fallback: look for vehicles near this stop from cache
-  const loc = findLocation(stopName);
+  // Fallback: find stop in GTFS data, then look for nearby vehicles from cache
+  let loc = null;
+  if (gtfs.isLoaded()) {
+    const { _debug: { stops } } = gtfs;
+    const lowerName = stopName.toLowerCase();
+    for (const s of stops.values()) {
+      if (s.name.toLowerCase().includes(lowerName)) { loc = s; break; }
+    }
+  }
   if (!loc || !cache) return res.json({ mode: 'fallback', departures: [] });
 
   const nearby = cache
@@ -934,24 +932,41 @@ app.get('/auth/dev-login', (req, res) => {
   res.json({ ok: true, token, user: { email: devEmail, username: user.username, karma: user.karma, avatar: user.avatar } });
 });
 
-// ── Static — serve index.html with MAPBOX_TOKEN injected ─────────────────────
-// Token is never committed to source; it's substituted at request time.
-const indexPath = path.join(__dirname, 'public', 'index.html');
-app.get('/', (req, res) => {
+// ── Valhalla routing proxy ────────────────────────────────────────────────────
+// Proxies to the public OSM Valhalla instance so no API key is needed client-side.
+const VALHALLA_URL = process.env.VALHALLA_URL || 'https://valhalla1.openstreetmap.de';
+
+app.post('/api/route', express.json(), async (req, res) => {
   try {
-    const html = fs.readFileSync(indexPath, 'utf8')
-      .replace('__MAPBOX_TOKEN__', process.env.MAPBOX_TOKEN || '');
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.send(html);
-  } catch(e) {
-    res.status(500).send('Failed to serve index.html');
+    const response = await fetch(`${VALHALLA_URL}/route`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    console.error('[route proxy]', err.message);
+    res.status(502).json({ error: 'Routing service unavailable' });
   }
+});
+
+// ── Static — serve index.html ─────────────────────────────────────────────────
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {
   console.log(`\n🚆  Transit-Live → http://localhost:${PORT}`);
   console.log(`    API Key  : ${API_KEY ? '✓ set (' + API_KEY.slice(0,20) + '…)' : '✗ MISSING'}`);
-  console.log(`    PTV Keys : ${(PTV_DEV_ID && PTV_API_KEY) ? '✓ set' : '✗ not set (fallback mode)'}`);
   console.log(`    Endpoint : ${FEEDS.train.pos}`);
   console.log(`    Debug    : http://localhost:${PORT}/api/debug\n`);
+
+  // Load GTFS static data in the background — journey planning available once complete
+  const gtfsPath = path.join(__dirname, 'gtfs.zip');
+  if (fs.existsSync(gtfsPath)) {
+    setImmediate(() => gtfs.load(gtfsPath));
+  } else {
+    console.warn('⚠ gtfs.zip not found — journey planning unavailable');
+  }
 });
