@@ -1443,14 +1443,13 @@ function updateJourneyPolyline(){
         layout:{'line-cap':'round','line-join':'round'},
         paint:{'line-color':color,'line-width':6,'line-opacity':0.95}
       });
-      // Flowing directional dashes — white arrows scrolling along the route
+      // Subtle white highlight line on top of transit route
       map.addLayer({
         id: baseId+'-pulse', type:'line', source:baseId,
-        layout:{'line-cap':'butt','line-join':'round'},
+        layout:{'line-cap':'round','line-join':'round'},
         paint:{
-          'line-color':'rgba(255,255,255,0.6)',
-          'line-width':2.5,
-          'line-dasharray':[3, 5],
+          'line-color':'rgba(255,255,255,0.25)',
+          'line-width':2,
         }
       });
     }
@@ -1479,21 +1478,6 @@ function updateJourneyPolyline(){
   _journeyLegLayerCount = layerCount;
   journeyPolyline = true;
 
-  // Flowing dash animation — directional dashes scrolling along transit lines
-  let dashPhase = 0;
-  function animateDash(){
-    if(!journeyPolyline) return;
-    dashPhase = (dashPhase + 0.08) % 6;
-    for(let i=0;i<layerCount;i++){
-      const pulseId = `journey-leg-${i}-pulse`;
-      if(map.getLayer(pulseId)){
-        // All values must stay positive — offset the gap with the phase
-        map.setPaintProperty(pulseId, 'line-dasharray', [2, dashPhase + 1, 0.01, 6 - dashPhase]);
-      }
-    }
-    requestAnimationFrame(animateDash);
-  }
-  animateDash();
 
   if(allPts.length > 0){
     // Switch to birds-eye for route clarity, then fit
