@@ -11,6 +11,18 @@ const jwt        = require('jsonwebtoken');
 const gtfs       = require('./gtfs');
 const walkRouter = require('./walkrouter');
 
+// Address search index — loaded from addresses.json (built by build-address-index.js)
+let addressIndex = []; // [[display, lat, lng], ...]
+try {
+  const addrPath = path.join(__dirname, 'addresses.json');
+  if (fs.existsSync(addrPath)) {
+    addressIndex = JSON.parse(fs.readFileSync(addrPath, 'utf8'));
+    console.log(`✓ Address index: ${addressIndex.length} addresses loaded`);
+  }
+} catch (e) {
+  console.warn('⚠ Could not load addresses.json:', e.message);
+}
+
 const app     = express();
 const PORT    = process.env.PORT || 3000;
 const API_KEY = process.env.TRANSIT_API_KEY || '';
@@ -652,8 +664,48 @@ app.get('/api/journey/autocomplete', async (req, res) => {
     }
   }
 
-  // 2. Nominatim fallback for street addresses (only if GTFS didn't fill all slots)
-  if (results.length < 6) {
+  // 2. Search local address index (665k Melbourne addresses, instant)
+  if (results.length < 8 && addressIndex.length > 0) {
+    const qParts = q.split(/[\s,]+/).filter(Boolean);
+    let count = 0;
+    for (const [display, lat, lng] of addressIndex) {
+      if (count >= 200) break; // cap scan for speed
+      const low = display.toLowerCase();
+      // All query parts must appear in the address
+      if (qParts.every(p => low.includes(p))) {
+        const key = low.split(',')[0].trim();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        results.push({ name: display, lat, lng, type: 'address' });
+        if (results.length >= 8) break;
+      }
+      count++;
+    }
+    // If scanning from start didn't find enough, do a binary search to the right section
+    if (results.length < 8 && qParts.length > 0) {
+      // Binary search for first address starting with the first numeric part or street
+      const searchKey = qParts.find(p => /^\d/.test(p)) ? q : qParts[qParts.length - 1];
+      let lo = 0, hi = addressIndex.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (addressIndex[mid][0].toLowerCase() < searchKey) lo = mid + 1; else hi = mid;
+      }
+      for (let i = lo; i < Math.min(lo + 500, addressIndex.length); i++) {
+        if (results.length >= 8) break;
+        const [display, lat, lng] = addressIndex[i];
+        const low = display.toLowerCase();
+        if (qParts.every(p => low.includes(p))) {
+          const key = low.split(',')[0].trim();
+          if (seen.has(key)) continue;
+          seen.add(key);
+          results.push({ name: display, lat, lng, type: 'address' });
+        }
+      }
+    }
+  }
+
+  // 3. Nominatim fallback (only if local results are sparse)
+  if (results.length < 3) {
     try {
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q + ' Melbourne VIC')}&countrycodes=au&limit=${6 - results.length}&format=json`;
       const r = await fetch(url, {
@@ -673,7 +725,7 @@ app.get('/api/journey/autocomplete', async (req, res) => {
           type: item.type || 'address',
         });
       }
-    } catch (e) { /* Nominatim timeout — just return GTFS results */ }
+    } catch (e) { /* Nominatim timeout — just return local results */ }
   }
 
   res.json(results);
