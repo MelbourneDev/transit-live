@@ -124,7 +124,7 @@ function locateUser(){
 // ── Map ────────────────────────────────────────────────────────────────
 const map = new maplibregl.Map({
   container: 'map',
-  style: '/styles/maplibre-dark.json',
+  style: '/styles/maplibre-style.json',
   center: [144.9631, -37.8136],  // [lng, lat]
   zoom: 13,
   pitch: 0,
@@ -137,10 +137,10 @@ map.on('error', e => console.error('[MapLibre error]', e.error?.message || e));
 map.on('load', () => {
   map.setFog({
     range: [2, 12],
-    color: '#0d1b2a',
+    color: '#d4eef5',
     'horizon-blend': 0.08,
-    'high-color': '#1a1a2e',
-    'space-color': '#0a0a1a'
+    'high-color': '#a8d8e8',
+    'space-color': '#7ec8e3'
   });
 });
 
