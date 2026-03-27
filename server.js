@@ -165,26 +165,33 @@ const FEEDS = {
   alerts: 'https://api.opendata.transport.vic.gov.au/opendata/public-transport/gtfs/realtime/v1/service-alerts',
 };
 
-const LINE_NAMES = {
-  '1':'Belgrave','2':'Glen Waverley','3':'Alamein','4':'Lilydale',
-  '5':'Frankston','6':'Werribee','7':'Williamstown',
-  '8':'Cranbourne','9':'Pakenham','10':'Sandringham',
-  '11':'Sunbury','12':'Craigieburn','13':'Upfield',
-  '14':'Mernda','15':'Hurstbridge',
-  'BEL':'Belgrave','GLW':'Glen Waverley','ALM':'Alamein','LIL':'Lilydale',
-  'FKN':'Frankston','WBE':'Werribee','WIL':'Williamstown',
-  'CTM':'Cranbourne','PKM':'Pakenham','SDM':'Sandringham',
-  'SBY':'Sunbury','CBE':'Craigieburn','UFD':'Upfield',
-  'MER':'Mernda','HBG':'Hurstbridge',
-};
-const LINE_COLORS = {
-  '1':'#094c8d','2':'#094c8d','3':'#094c8d','4':'#094c8d',
-  '5':'#159943','6':'#159943','7':'#159943',
-  '8':'#8b1a4a','9':'#8b1a4a','10':'#f178af',
-  '11':'#fc7f1e','12':'#fc7f1e','13':'#fc7f1e',
-  '14':'#e1261c','15':'#e1261c',
-};
 const MODE_COLOR = { train:'#094c8d', tram:'#2CA05A', bus:'#F5A623', vline:'#6c3483' };
+
+// Route name/color lookup built from GTFS data (populated on load)
+// Maps normalised route codes (e.g. 'BEG', 'ALM', '96') → {name, color, mode}
+let gtfsRouteLookup = new Map();
+
+function buildRouteLookup() {
+  if (!gtfs.isLoaded()) return;
+  const { _debug: { routes } } = gtfs;
+  const lookup = new Map();
+  for (const [routeId, route] of routes) {
+    // Extract normalised code from route_id (e.g. 'aus:vic:vic-02-BEG:' → 'BEG')
+    const m = routeId.match(/vic-\d+-([A-Z0-9-]+):?$/i);
+    const code = m ? m[1].toUpperCase().replace(/-R$/, '') : '';
+    // Also map by route_short_name (e.g. '96' for trams, '200' for buses)
+    const shortCode = (route.shortName || '').toUpperCase();
+    const entry = {
+      name:  route.longName || route.shortName || code,
+      color: route.color || MODE_COLOR[route.mode] || '#888',
+      mode:  route.mode,
+    };
+    if (code && !lookup.has(code)) lookup.set(code, entry);
+    if (shortCode && !lookup.has(shortCode)) lookup.set(shortCode, entry);
+  }
+  gtfsRouteLookup = lookup;
+  console.log(`  ✓ Route lookup: ${lookup.size} entries from GTFS`);
+}
 
 // ── Fetch a single feed ───────────────────────────────────────────────────────
 async function fetchFeed(url) {
@@ -242,15 +249,13 @@ function parseVehicles(posFeed, delays, mode) {
     const tripId     = vp.trip?.trip_id  || '';
     const delaySec   = delays[tripId] || 0;
     const occupancy  = vp.occupancy_status != null ? vp.occupancy_status : null;
-    // Only use LINE_NAMES/LINE_COLORS lookup for train/vline — tram/bus numbers
-    // overlap with train line number keys (e.g. tram route "1" ≠ Belgrave)
+    // Look up route name/color from GTFS data
+    const gtfsRoute = gtfsRouteLookup.get(routeId) || gtfsRouteLookup.get(rawRouteId);
     const isRail = mode === 'train' || mode === 'vline';
-    const lineName = isRail
-      ? (LINE_NAMES[routeId] || LINE_NAMES[rawRouteId] || routeId || mode)
+    const lineName = gtfsRoute
+      ? (isRail ? gtfsRoute.name : (routeId || rawRouteId || gtfsRoute.name))
       : (routeId || rawRouteId || mode);
-    const color = isRail
-      ? (LINE_COLORS[routeId] || LINE_COLORS[rawRouteId] || MODE_COLOR[mode])
-      : MODE_COLOR[mode];
+    const color = gtfsRoute?.color || MODE_COLOR[mode];
     return [{
       id:       `${mode}_${e.id}`,
       mode,
@@ -506,7 +511,6 @@ app.get('/api/gtfs/shapes', (req, res) => {
   if (!gtfs.isLoaded()) return res.json({ type: 'FeatureCollection', features: [] });
 
   const { _debug: { routes, trips, shapeCache } } = gtfs;
-  const MODE_COLOR = { train: '#094c8d', tram: '#2CA05A', bus: '#F5A623', vline: '#6c3483' };
 
   // Build route_id → best shape_id (longest shape wins)
   const routeBestShape = new Map(); // route_id → {shapeId, len, mode, shortName, longName}
@@ -520,7 +524,7 @@ app.get('/api/gtfs/shapes', (req, res) => {
       routeBestShape.set(trip.routeId, {
         shapeId: trip.shapeId, len, mode: trip.mode,
         name: route ? (route.shortName || route.longName) : trip.routeId,
-        color: MODE_COLOR[trip.mode] || '#888',
+        color: route?.color || MODE_COLOR[trip.mode] || '#888',
       });
     }
   }
@@ -965,7 +969,7 @@ app.listen(PORT, () => {
   // Load GTFS static data in the background — journey planning available once complete
   const gtfsPath = path.join(__dirname, 'gtfs.zip');
   if (fs.existsSync(gtfsPath)) {
-    setImmediate(() => gtfs.load(gtfsPath));
+    setImmediate(() => { gtfs.load(gtfsPath); buildRouteLookup(); });
   } else {
     console.warn('⚠ gtfs.zip not found — journey planning unavailable');
   }
