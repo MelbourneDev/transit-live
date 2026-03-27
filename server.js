@@ -619,7 +619,9 @@ app.get('/api/stops/nearby', (req, res) => {
   const lat = parseFloat(req.query.lat);
   const lng = parseFloat(req.query.lng);
   if (isNaN(lat) || isNaN(lng)) return res.status(400).json({ error: 'lat and lng required' });
-  res.json([]);
+  if (!gtfs.isLoaded()) return res.json([]);
+  const nearby = gtfs.nearestStops(lat, lng, 10, 1.0);
+  res.json(nearby);
 });
 
 // ── GET /api/departures?stopName=X ───────────────────────────────────────────
