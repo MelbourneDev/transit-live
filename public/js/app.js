@@ -180,7 +180,7 @@ async function buildRouteSources(){
     map.addSource(id,{ type:'geojson', data:f });
     map.addLayer({
       id, type:'line', source:id,
-      layout:{'line-cap':'round','line-join':'round','visibility':'visible'},
+      layout:{'line-cap':'round','line-join':'round','visibility':'none'},
       paint:{'line-color':color,'line-width':weight,'line-opacity':opacity}
     });
     routePolylines[routeId]=id;
@@ -1200,6 +1200,9 @@ function initSearch(){
     clearTimeout(debounceTimer);
     const q = input.value.trim();
     if(!q){ results.innerHTML=''; results.classList.remove('show'); return; }
+    // Show searching indicator immediately
+    results.innerHTML='<div class="addr-searching">Searching…</div>';
+    results.classList.add('show');
     debounceTimer = setTimeout(async () => {
       try{
         const r = await fetch(`/api/journey/autocomplete?q=${encodeURIComponent(q)}`);
@@ -1318,7 +1321,10 @@ function startJourneyGo(){
 function clearJourneyLayers(){
   for(let i = 0; i < _journeyLegLayerCount + 1; i++){
     const id = `journey-leg-${i}`;
-    if(map.getLayer(id)) map.removeLayer(id);
+    // Remove sub-layers (border, pulse) then main layer and source
+    for(const suffix of ['-pulse', '-border', '']){
+      if(map.getLayer(id+suffix)) map.removeLayer(id+suffix);
+    }
     if(map.getSource(id)) map.removeSource(id);
   }
   _journeyLegLayerCount = 0;
@@ -1346,18 +1352,41 @@ function updateJourneyPolyline(){
 
   const addSegment = (coords, color, isWalk) => {
     if(!coords || coords.length < 2) return;
-    const id = `journey-leg-${layerCount++}`;
-    map.addSource(id, {type:'geojson', data:{type:'Feature',geometry:{type:'LineString',coordinates:coords}}});
-    map.addLayer({
-      id, type:'line', source:id,
-      layout:{'line-cap':'round','line-join':'round'},
-      paint:{
-        'line-color': color,
-        'line-width': isWalk ? 3 : 5,
-        'line-opacity': isWalk ? 0.65 : 0.88,
-        ...(isWalk ? {'line-dasharray':[3, 3]} : {}),
-      }
-    });
+    const baseId = `journey-leg-${layerCount++}`;
+    const geojson = {type:'Feature',geometry:{type:'LineString',coordinates:coords}};
+    map.addSource(baseId, {type:'geojson', data:geojson});
+
+    if(isWalk){
+      // Walk: soft purple dashed line with white border
+      map.addLayer({
+        id: baseId+'-border', type:'line', source:baseId,
+        layout:{'line-cap':'round','line-join':'round'},
+        paint:{'line-color':'#ffffff','line-width':6,'line-opacity':0.7}
+      });
+      map.addLayer({
+        id: baseId, type:'line', source:baseId,
+        layout:{'line-cap':'round','line-join':'round'},
+        paint:{'line-color':'#6C63FF','line-width':3.5,'line-opacity':0.85,'line-dasharray':[2.5, 2]}
+      });
+    } else {
+      // Transit: colored line with dark border + bright pulse overlay
+      map.addLayer({
+        id: baseId+'-border', type:'line', source:baseId,
+        layout:{'line-cap':'round','line-join':'round'},
+        paint:{'line-color':'#1a1a2e','line-width':9,'line-opacity':0.25}
+      });
+      map.addLayer({
+        id: baseId, type:'line', source:baseId,
+        layout:{'line-cap':'round','line-join':'round'},
+        paint:{'line-color':color,'line-width':5.5,'line-opacity':0.9}
+      });
+      // Animated pulse layer — white dashes that scroll along the route
+      map.addLayer({
+        id: baseId+'-pulse', type:'line', source:baseId,
+        layout:{'line-cap':'round','line-join':'round'},
+        paint:{'line-color':'#ffffff','line-width':2,'line-opacity':0.55,'line-dasharray':[2, 6]}
+      });
+    }
     allPts.push(...coords);
   };
 
@@ -1383,9 +1412,21 @@ function updateJourneyPolyline(){
   _journeyLegLayerCount = layerCount;
   journeyPolyline = true;
 
-  if(map.getLayer('journey-placeholder'))
-    map.setLayoutProperty('journey-placeholder','visibility','none');
-  journeyLine = false;
+  // Animate pulse layers — scroll dashes along the route
+  let dashOffset = 0;
+  function animatePulse(){
+    if(!journeyPolyline) return;
+    dashOffset = (dashOffset + 0.15) % 8;
+    for(let i=0;i<layerCount;i++){
+      const pulseId = `journey-leg-${i}-pulse`;
+      if(map.getLayer(pulseId)){
+        map.setPaintProperty(pulseId, 'line-dasharray', [2, 6]);
+        map.setPaintProperty(pulseId, 'line-offset', dashOffset);
+      }
+    }
+    requestAnimationFrame(animatePulse);
+  }
+  animatePulse();
 
   if(allPts.length > 0){
     // Switch to birds-eye for route clarity, then fit

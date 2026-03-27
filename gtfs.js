@@ -588,6 +588,7 @@ function planJourney(fromLat, fromLng, toLat, toLng, fromName, toName) {
   }
 
   // ── Extract journeys ────────────────────────────────────────────────────────
+  const distKm = haversineKm(fromLat, fromLng, toLat, toLng);
   const results = [];
   for (const toStop of toStopsAll) {
     for (let k = 1; k <= MAX_ROUNDS; k++) {
@@ -606,102 +607,121 @@ function planJourney(fromLat, fromLng, toLat, toLng, fromName, toName) {
       });
 
       let safety = 20;
-      while (curRound > 0 && --safety > 0) {
+      while (--safety > 0) {
         // Check for transfer at this stop+round
-        const xferKey = curStopId + ':' + curRound + ':xfer';
-        const xp = parent.get(xferKey);
-        if (xp && xp.type === 'transfer') {
-          const fromS = stops.get(xp.fromStopId);
-          const toS   = stops.get(xp.toStopId);
-          if (fromS && toS) {
-            legs.unshift({
-              type: 'walk', from: fromS.name, to: toS.name,
-              duration: walkMins(xp.walkKm),
-              fromLat: fromS.lat, fromLng: fromS.lng, toLat: toS.lat, toLng: toS.lng,
-            });
+        if (curRound > 0) {
+          const xferKey = curStopId + ':' + curRound + ':xfer';
+          const xp = parent.get(xferKey);
+          if (xp && xp.type === 'transfer') {
+            const fromS = stops.get(xp.fromStopId);
+            const toS   = stops.get(xp.toStopId);
+            if (fromS && toS) {
+              legs.unshift({
+                type: 'walk', from: fromS.name, to: toS.name,
+                duration: walkMins(xp.walkKm),
+                fromLat: fromS.lat, fromLng: fromS.lng, toLat: toS.lat, toLng: toS.lng,
+              });
+            }
+            curStopId = xp.fromStopId;
+            continue;
           }
-          curStopId = xp.fromStopId;
-          continue;
         }
 
         // Check for transit leg
-        const key = curStopId + ':' + curRound;
-        const p = parent.get(key);
-        if (!p) break;
+        if (curRound > 0) {
+          const key = curStopId + ':' + curRound;
+          const p = parent.get(key);
+          if (p && p.type === 'transit') {
+            const pat   = patterns[p.patIdx];
+            const trip  = trips.get(p.tripId);
+            const route = trip ? routes.get(trip.routeId) : null;
+            const mode  = pat.mode || trip?.mode || 'bus';
+            const boardStop  = stops.get(p.boardStopId);
+            const alightStop = stops.get(pat.stopIds[p.alightPos]);
+            const stopCount  = p.alightPos - p.boardPos;
 
-        if (p.type === 'transit') {
-          const pat   = patterns[p.patIdx];
-          const trip  = trips.get(p.tripId);
-          const route = trip ? routes.get(trip.routeId) : null;
-          const mode  = pat.mode || trip?.mode || 'bus';
-          const boardStop  = stops.get(p.boardStopId);
-          const alightStop = stops.get(pat.stopIds[p.alightPos]);
-          const stopCount  = p.alightPos - p.boardPos;
-
-          let routePath = pat.stopIds.slice(p.boardPos, p.alightPos + 1)
-            .map(sid => stops.get(sid)).filter(Boolean)
-            .map(s => [+(s.lat.toFixed(5)), +(s.lng.toFixed(5))]);
-          if (trip?.shapeId && boardStop && alightStop) {
-            const shape = loadShape(trip.shapeId, mode);
-            if (shape && shape.length > 1) {
-              const clipped = clipShape(shape, boardStop, alightStop);
-              if (clipped && clipped.length > 1) routePath = clipped;
+            let routePath = pat.stopIds.slice(p.boardPos, p.alightPos + 1)
+              .map(sid => stops.get(sid)).filter(Boolean)
+              .map(s => [+(s.lat.toFixed(5)), +(s.lng.toFixed(5))]);
+            if (trip?.shapeId && boardStop && alightStop) {
+              const shape = loadShape(trip.shapeId, mode);
+              if (shape && shape.length > 1) {
+                const clipped = clipShape(shape, boardStop, alightStop);
+                if (clipped && clipped.length > 1) routePath = clipped;
+              }
             }
+
+            legs.unshift({
+              type: mode,
+              line: route ? (route.shortName || route.longName) : '',
+              color: route?.color || MODE_COLOR[mode] || '#5b8dee',
+              from: boardStop?.name || '?', to: alightStop?.name || '?',
+              duration: (p.arrMin != null && p.depMin != null) ? p.arrMin - p.depMin : stopCount * 2,
+              stopCount,
+              depart: minsToTime(p.depMin ?? nowMins),
+              minsUntilDep: p.depMin != null ? Math.max(0, p.depMin - nowMins) : 0,
+              delay: 0, routePath, run_ref: p.tripId,
+            });
+
+            curStopId = p.boardStopId;
+            curRound--;
+            continue;
           }
+        }
 
-          legs.unshift({
-            type: mode,
-            line: route ? (route.shortName || route.longName) : '',
-            color: route?.color || MODE_COLOR[mode] || '#5b8dee',
-            from: boardStop?.name || '?', to: alightStop?.name || '?',
-            duration: (p.arrMin != null && p.depMin != null) ? p.arrMin - p.depMin : stopCount * 2,
-            stopCount,
-            depart: minsToTime(p.depMin ?? nowMins),
-            minsUntilDep: p.depMin != null ? Math.max(0, p.depMin - nowMins) : 0,
-            delay: 0, routePath, run_ref: p.tripId,
-          });
+        // Check for origin walk (round 0)
+        const originKey = curStopId + ':0';
+        const op = parent.get(originKey);
+        if (op && op.type === 'origin') {
+          const s = stops.get(op.stopId);
+          if (s && (haversineKm(fromLat, fromLng, s.lat, s.lng) > 0.03)) {
+            legs.unshift({
+              type: 'walk', from: fromName || 'Your location', to: s.name,
+              duration: walkMins(op.walkKm),
+              fromLat, fromLng, toLat: s.lat, toLng: s.lng,
+            });
+          }
+        }
+        break;
+      }
 
-          curStopId = p.boardStopId;
-          curRound--;
-        } else if (p.type === 'origin') {
-          const s = stops.get(p.stopId);
-          legs.unshift({
-            type: 'walk', from: fromName || 'Your location', to: s?.name || '?',
-            duration: walkMins(p.walkKm),
-            fromLat, fromLng, toLat: s?.lat, toLng: s?.lng,
-          });
-          break;
+      // Collapse consecutive walk legs into single walks
+      const merged = [];
+      for (const leg of legs) {
+        const prev = merged[merged.length - 1];
+        if (prev && prev.type === 'walk' && leg.type === 'walk') {
+          prev.to = leg.to;
+          prev.toLat = leg.toLat;
+          prev.toLng = leg.toLng;
+          prev.duration += leg.duration;
         } else {
-          break;
+          merged.push({ ...leg });
         }
       }
 
-      const totalMin = legs.reduce((s, l) => s + (l.duration || 0), 0);
-      const transfers = legs.filter(l => l.type !== 'walk').length - 1;
-      const firstTransit = legs.find(l => l.type !== 'walk');
+      // Skip if no transit legs
+      const hasTransit = merged.some(l => l.type !== 'walk');
+      if (!hasTransit && distKm >= 5) continue;
+
+      const totalMin = merged.reduce((s, l) => s + (l.duration || 0), 0);
+      const transfers = merged.filter(l => l.type !== 'walk').length - 1;
+      const firstTransit = merged.find(l => l.type !== 'walk');
 
       results.push({
         score: totalMin + Math.max(0, transfers) * 5,
         duration: totalMin,
         transfers: Math.max(0, transfers),
         depart: firstTransit?.depart || minsToTime(nowMins),
-        legs,
+        legs: merged,
       });
     }
   }
 
-  // Filter out walk-only routes unless the trip is short (< 5km)
-  const distKm = haversineKm(fromLat, fromLng, toLat, toLng);
-  const filtered = results.filter(opt => {
-    const hasTransit = opt.legs.some(l => l.type !== 'walk');
-    return hasTransit || distKm < 5;
-  });
-
   // Dedup and variety
-  filtered.sort((a, b) => a.score - b.score);
+  results.sort((a, b) => a.score - b.score);
   const seen = new Set();
   const deduped = [];
-  for (const opt of filtered) {
+  for (const opt of results) {
     const sig = opt.legs.filter(l => l.type !== 'walk').map(l => `${l.type}:${l.line}`).join('|');
     if (seen.has(sig)) continue;
     seen.add(sig);
