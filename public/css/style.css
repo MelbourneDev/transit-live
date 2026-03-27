@@ -140,31 +140,42 @@ button{font-family:var(--font);cursor:pointer}
 .sb-route-summary{font-size:.72rem;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sb-route-time{font-size:.7rem;font-weight:700;color:var(--blue);white-space:nowrap}
 
-/* Route detail — timeline bar */
+/* Route detail — timeline */
 .sb-route-detail{padding:0 16px 8px}
-.sb-timeline{position:relative;padding-left:24px}
-.sb-tl-step{position:relative;padding:6px 0 6px 16px;min-height:28px}
+.sb-timeline{position:relative;padding-left:28px}
+
+.sb-tl-step{
+  position:relative;
+  padding:8px 0 8px 0;
+  min-height:24px}
+.sb-tl-step.alight-step{padding:4px 0}
 .sb-tl-step.last{padding-bottom:0}
+
+/* Vertical bar */
 .sb-tl-bar{
-  position:absolute;left:3px;top:14px;bottom:-6px;
-  width:4px;border-radius:2px}
+  position:absolute;left:4px;top:16px;bottom:0;
+  width:3px;border-radius:1.5px}
 .sb-tl-bar.dashed{
-  background:repeating-linear-gradient(to bottom,#aaa 0,#aaa 4px,transparent 4px,transparent 8px) !important}
-.sb-tl-step.last .sb-tl-bar{display:none}
+  background:none !important;
+  border-left:3px dashed #bbb}
+.sb-tl-step.last .sb-tl-bar,
 .sb-tl-step.alight-step .sb-tl-bar{display:none}
-.sb-tl-step.alight-step{padding:2px 0 2px 16px;min-height:20px}
+
+/* Dots — all same size, same X position */
 .sb-tl-dot{
   position:absolute;left:0;top:10px;
-  width:10px;height:10px;border-radius:50%;
-  background:white;border:3px solid #aaa;
-  z-index:1}
-.sb-tl-dot.transit{background:white}
-.sb-tl-dot.walk{border-color:#aaa;background:white}
+  width:11px;height:11px;border-radius:50%;
+  background:white;border:2.5px solid #bbb;
+  z-index:1;box-sizing:border-box}
+.sb-tl-dot.transit{border-width:3px}
+.sb-tl-dot.walk{border-color:#bbb}
 .sb-tl-dot.dest{border-color:#ff6b6b;background:#ff6b6b}
-.sb-tl-content{padding-left:4px}
-.sb-tl-title{font-size:.8rem;font-weight:700;color:var(--text);line-height:1.35}
+
+/* Text — consistent left edge */
+.sb-tl-content{margin-left:8px}
+.sb-tl-title{font-size:.78rem;font-weight:700;color:var(--text);line-height:1.4}
 .sb-tl-title strong{font-weight:800}
-.sb-tl-sub{font-size:.7rem;font-weight:600;color:var(--text2);margin-top:1px}
+.sb-tl-sub{font-size:.68rem;font-weight:600;color:var(--text2);margin-top:1px;line-height:1.3}
 
 /* Go & Clear buttons */
 .sb-go-btn{

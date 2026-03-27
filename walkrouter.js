@@ -57,6 +57,27 @@ function nearestNode(lat, lng, maxM = 500) {
   return best;
 }
 
+function nearestNodeExcluding(lat, lng, excludeId, maxM = 500) {
+  const latB = Math.floor(lat / GRID);
+  const lngB = Math.floor(lng / GRID);
+  const cells = Math.ceil(maxM / (GRID * 111000)) + 1;
+  let best = null, bestDist = Infinity;
+  for (let dLat = -cells; dLat <= cells; dLat++) {
+    for (let dLng = -cells; dLng <= cells; dLng++) {
+      const ids = grid.get(`${latB + dLat},${lngB + dLng}`);
+      if (!ids) continue;
+      for (const nid of ids) {
+        if (nid === excludeId) continue;
+        const n = nodes.get(nid);
+        if (!n) continue;
+        const d = distM(lat, lng, n.lat, n.lng);
+        if (d < bestDist && d <= maxM) { bestDist = d; best = nid; }
+      }
+    }
+  }
+  return best;
+}
+
 // ── Load OSM data ─────────────────────────────────────────────────────────────
 function load(filePath) {
   if (_loaded) return;
@@ -120,10 +141,18 @@ function load(filePath) {
 function findPath(fromLat, fromLng, toLat, toLng) {
   if (!_loaded) return null;
 
-  const startNode = nearestNode(fromLat, fromLng);
-  const endNode   = nearestNode(toLat, toLng);
+  const startNode = nearestNode(fromLat, fromLng, 800);
+  const endNode   = nearestNode(toLat, toLng, 800);
   if (!startNode || !endNode) return null;
   if (startNode === endNode) {
+    // Same nearest node — try to find a different end node further out
+    const altEnd = nearestNodeExcluding(toLat, toLng, startNode, 800);
+    if (altEnd) {
+      // Route through the alt node
+      const n = nodes.get(startNode);
+      const n2 = nodes.get(altEnd);
+      return [[fromLng, fromLat], [n.lng, n.lat], [n2.lng, n2.lat], [toLng, toLat]];
+    }
     const n = nodes.get(startNode);
     return [[fromLng, fromLat], [n.lng, n.lat], [toLng, toLat]];
   }
