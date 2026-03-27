@@ -1240,8 +1240,11 @@ function clearAddrSearch(){
 }
 
 function selectAddrResult(lat, lng, name, fullAddr){
-  clearAddrSearch();
-  document.getElementById('addr-search-input')?.blur();
+  // Keep the destination name in the input, just hide suggestions
+  const results = document.getElementById('addr-suggestions');
+  if(results){ results.innerHTML=''; results.classList.remove('show'); }
+  const input = document.getElementById('addr-search-input');
+  if(input){ input.value = name; input.blur(); }
   placeDestPin(+lat, +lng, name, fullAddr);
   destLoc = {lat:+lat, lng:+lng, name};
   // Show bottom sheet in loading state right away
@@ -1306,8 +1309,8 @@ function selectJourneyOption(idx){
   if(!allJourneys[idx]) return;
   activeJourneyIdx = idx;
   activeJourney = allJourneys[idx];
-  // Refresh tab highlight
-  document.querySelectorAll('.jbs-opt').forEach((el,i) => el.classList.toggle('active', i===idx));
+  // Refresh card highlight
+  document.querySelectorAll('.sb-route-card').forEach((el,i) => el.classList.toggle('active', i===idx));
   updateJourneyPolyline();
   showJourneyBottomSheet(activeJourney, true); // true = skip re-rendering tabs
   updateJourneyVehicles();
@@ -1367,7 +1370,7 @@ function updateJourneyPolyline(){
       map.addLayer({
         id: baseId, type:'line', source:baseId,
         layout:{'line-cap':'round','line-join':'round'},
-        paint:{'line-color':'#6C63FF','line-width':3.5,'line-opacity':0.85,'line-dasharray':[1.2, 0.8]}
+        paint:{'line-color':'#6C63FF','line-width':3.5,'line-opacity':0.85,'line-dasharray':[4, 2.5]}
       });
     } else {
       // Transit: colored line with dark border
@@ -1425,8 +1428,8 @@ function updateJourneyPolyline(){
 
   // Racing light animation — bright highlight sweeps along transit lines
   let pulsePos = 0;
-  const PULSE_SPEED = 0.004;
-  const PULSE_WIDTH = 0.08;
+  const PULSE_SPEED = 0.002;
+  const PULSE_WIDTH = 0.04;
   function animatePulse(){
     if(!journeyPolyline) return;
     pulsePos = (pulsePos + PULSE_SPEED) % 1;
