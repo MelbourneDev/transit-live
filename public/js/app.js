@@ -1165,7 +1165,7 @@ function initSearch(){
 
   let debounceTimer = null;
 
-  const typeIco = {train:'🚆',tram:'🚋',bus:'🚌',suburb:'🏘',station:'🚉',university:'🎓',hospital:'🏥'};
+  const typeIco = {train:'🚆',tram:'🚋',bus:'🚌',station:'🚉',stop:'🚏',suburb:'🏘',address:'🏠',university:'🎓',hospital:'🏥'};
 
   function renderSuggestions(data){
     results.innerHTML = data.map((l,i)=>{

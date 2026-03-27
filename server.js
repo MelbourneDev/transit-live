@@ -606,21 +606,63 @@ app.post('/api/journey', async (req, res) => {
 });
 
 // ── GET /api/journey/autocomplete?q=X ────────────────────────────────────────
+// Hybrid search: GTFS stops first (instant), Nominatim fallback for street addresses
 app.get('/api/journey/autocomplete', async (req, res) => {
-  const q = (req.query.q || '').trim();
+  const q = (req.query.q || '').trim().toLowerCase();
   if (!q) return res.json([]);
-  try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q + ' Melbourne VIC')}&countrycodes=au&limit=6&format=json`;
-    const r = await fetch(url, { headers: { 'User-Agent': 'Transit-Live-Melbourne/1.0' } });
-    const data = await r.json();
-    res.json(data.map(item => ({
-      name: item.display_name,
-      lat: parseFloat(item.lat),
-      lng: parseFloat(item.lon),
-    })));
-  } catch (e) {
-    res.json([]);
+
+  const results = [];
+  const seen = new Set(); // deduplicate by name
+
+  // 1. Search GTFS stops (instant, local data)
+  if (gtfs.isLoaded()) {
+    const { _debug: { stops } } = gtfs;
+    const modeIco = { train: 'station', tram: 'tram', bus: 'bus', vline: 'station' };
+    const scored = [];
+    for (const s of stops.values()) {
+      const nameLow = s.name.toLowerCase();
+      if (!nameLow.includes(q)) continue;
+      // Score: exact start > contains, shorter name > longer (more specific)
+      const startsWith = nameLow.startsWith(q) ? 0 : 1;
+      const score = startsWith * 1000 + s.name.length;
+      scored.push({ ...s, score, type: modeIco[s.mode] || 'stop' });
+    }
+    scored.sort((a, b) => a.score - b.score);
+    // Deduplicate stops by name (many platforms per station)
+    for (const s of scored) {
+      const key = s.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      results.push({ name: s.name, lat: s.lat, lng: s.lng, type: s.type });
+      if (results.length >= 5) break;
+    }
   }
+
+  // 2. Nominatim fallback for street addresses (only if GTFS didn't fill all slots)
+  if (results.length < 6) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q + ' Melbourne VIC')}&countrycodes=au&limit=${6 - results.length}&format=json`;
+      const r = await fetch(url, {
+        headers: { 'User-Agent': 'Transit-Live-Melbourne/1.0' },
+        signal: AbortSignal.timeout(3000),
+      });
+      const data = await r.json();
+      for (const item of data) {
+        const name = item.display_name;
+        const key = name.toLowerCase().split(',')[0].trim();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        results.push({
+          name,
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon),
+          type: item.type || 'address',
+        });
+      }
+    } catch (e) { /* Nominatim timeout — just return GTFS results */ }
+  }
+
+  res.json(results);
 });
 
 // ── GET /api/stops/nearby?lat=X&lng=Y ────────────────────────────────────────
