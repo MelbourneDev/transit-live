@@ -545,31 +545,11 @@ const MARKER_SZ = 22; // fixed size — never changes with zoom, never turns int
 function makeMarkerEl(v){
   const delayed = v.delay>2;
   const color = MODE_COLOR[v.mode]||v.color||'#5b8dee';
+  const dotColor = delayed ? '#ff6b6b' : color;
   const zoom = map.getZoom();
+  const dotSz = zoom >= 14 ? 10 : zoom >= 12 ? 8 : 6;
   const el = document.createElement('div');
-
-  if(zoom < 15){
-    // Simple colored dot at overview zoom — lightweight DOM
-    const dotSz = zoom < 12 ? 6 : 8;
-    const dotColor = delayed ? '#ff6b6b' : color;
-    el.innerHTML=`<div class="vm-dot" style="width:${dotSz}px;height:${dotSz}px;background:${dotColor};border-radius:50%;border:1.5px solid rgba(255,255,255,0.8);box-shadow:0 0 4px ${dotColor}66"></div>`;
-  } else {
-    // Full SVG face at close zoom
-    const sz = MARKER_SZ;
-    const glowCol = (delayed?'#ff6b6b':color)+'66';
-    const seed = typeof v.id==='string'
-      ? [...v.id].reduce((a,c)=>a+c.charCodeAt(0),0) : Number(v.id);
-    const bobDelay = (seed*173)%2200;
-    const pad=4; const sq=sz+pad;
-    const routeLabel = getRouteLabel(v);
-    const svg=makeFaceSVG(v.mode,delayed,color,sz,routeLabel);
-    el.innerHTML=`<div class="vm-wrap" style="width:${sq}px;height:${sq+8}px">
-      <div class="vm-inner" style="animation-delay:${bobDelay}ms;filter:drop-shadow(0 2px 6px ${glowCol}) drop-shadow(0 3px 3px rgba(0,0,0,0.22))">
-        ${svg}
-      </div>
-      <div class="vm-shadow" style="width:${Math.round(sq*0.65)}px;animation-delay:${bobDelay}ms"></div>
-    </div>`;
-  }
+  el.innerHTML=`<div class="vm-dot" style="width:${dotSz}px;height:${dotSz}px;background:${dotColor};border-radius:50%;border:1.5px solid rgba(255,255,255,0.8);box-shadow:0 0 4px ${dotColor}66;cursor:pointer"></div>`;
   return el;
 }
 
