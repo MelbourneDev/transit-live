@@ -87,34 +87,37 @@
 </header>
 
 
-<!-- Address search bar -->
-<div id="addr-search-wrap">
-  <input id="addr-search-input" type="text" placeholder="Search a station, suburb or place…" autocomplete="off" spellcheck="false"/>
-  <div id="addr-suggestions"></div>
-</div>
+<!-- Journey Sidebar -->
+<div id="sidebar">
+  <div class="sb-brand">
+    <span class="sb-logo">🚆 Transit<span class="accent">-Live</span></span>
+  </div>
 
-<!-- Journey Planner Sheet -->
-<div id="journey-bottom-sheet">
-  <div class="jbs-handle-wrap"><div class="jbs-handle"></div></div>
-  <div class="jbs-header">
-    <div class="jbs-dest" id="jbs-dest">Destination</div>
-    <button class="jbs-close-btn" onclick="clearDestination()">✕ Clear</button>
-  </div>
-  <!-- Route option tabs — one per journey option returned by planner -->
-  <div class="jbs-options" id="jbs-options"></div>
-  <!-- Summary for the selected option -->
-  <div class="jbs-summary" id="jbs-summary">
-    <div class="jbs-summary-pill" id="jbs-mode-pill">🗺</div>
-    <div class="jbs-summary-info">
-      <span class="jbs-duration" id="jbs-duration">—</span>
-      <span class="jbs-summary-sub" id="jbs-route-name">Finding route…</span>
+  <!-- From / To inputs -->
+  <div class="sb-inputs">
+    <div class="sb-input-row">
+      <div class="sb-input-dot from"></div>
+      <input id="sb-from-input" type="text" value="Your location" placeholder="Starting point" autocomplete="off" spellcheck="false" readonly/>
     </div>
-    <div class="jbs-depart-badge" id="jbs-depart-time">—</div>
+    <div class="sb-input-divider"></div>
+    <div class="sb-input-row">
+      <div class="sb-input-dot to"></div>
+      <input id="addr-search-input" type="text" placeholder="Where to?" autocomplete="off" spellcheck="false"/>
+    </div>
+    <div id="addr-suggestions"></div>
   </div>
-  <!-- Step-by-step legs -->
-  <div class="jbs-legs" id="jbs-legs"></div>
-  <!-- Go button — will hook into navigation mode -->
-  <button class="jbs-go-btn" id="jbs-go-btn" onclick="startJourneyGo()" style="display:none">Let's Go →</button>
+
+  <!-- Route options (populated by JS) -->
+  <div id="sb-routes" class="sb-routes"></div>
+
+  <!-- Selected route detail -->
+  <div id="sb-route-detail" class="sb-route-detail"></div>
+
+  <!-- Go button -->
+  <button class="sb-go-btn" id="jbs-go-btn" onclick="startJourneyGo()" style="display:none">Let's Go →</button>
+
+  <!-- Clear button -->
+  <button class="sb-clear-btn" id="sb-clear-btn" onclick="clearDestination()" style="display:none">✕ Clear route</button>
 </div>
 
 <!-- Follow bar -->

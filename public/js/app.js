@@ -1321,10 +1321,11 @@ function startJourneyGo(){
 function clearJourneyLayers(){
   for(let i = 0; i < _journeyLegLayerCount + 1; i++){
     const id = `journey-leg-${i}`;
-    // Remove sub-layers (border, pulse) then main layer and source
+    // Remove sub-layers (pulse, border, main) then sources
     for(const suffix of ['-pulse', '-border', '']){
       if(map.getLayer(id+suffix)) map.removeLayer(id+suffix);
     }
+    if(map.getSource(id+'-pulse-src')) map.removeSource(id+'-pulse-src');
     if(map.getSource(id)) map.removeSource(id);
   }
   _journeyLegLayerCount = 0;
@@ -1357,7 +1358,7 @@ function updateJourneyPolyline(){
     map.addSource(baseId, {type:'geojson', data:geojson});
 
     if(isWalk){
-      // Walk: soft purple dashed line with white border
+      // Walk: soft purple dotted line with white border
       map.addLayer({
         id: baseId+'-border', type:'line', source:baseId,
         layout:{'line-cap':'round','line-join':'round'},
@@ -1366,10 +1367,10 @@ function updateJourneyPolyline(){
       map.addLayer({
         id: baseId, type:'line', source:baseId,
         layout:{'line-cap':'round','line-join':'round'},
-        paint:{'line-color':'#6C63FF','line-width':3.5,'line-opacity':0.85,'line-dasharray':[2.5, 2]}
+        paint:{'line-color':'#6C63FF','line-width':3.5,'line-opacity':0.85,'line-dasharray':[1.2, 0.8]}
       });
     } else {
-      // Transit: colored line with dark border + bright pulse overlay
+      // Transit: colored line with dark border
       map.addLayer({
         id: baseId+'-border', type:'line', source:baseId,
         layout:{'line-cap':'round','line-join':'round'},
@@ -1380,11 +1381,21 @@ function updateJourneyPolyline(){
         layout:{'line-cap':'round','line-join':'round'},
         paint:{'line-color':color,'line-width':5.5,'line-opacity':0.9}
       });
-      // Animated pulse layer — white dashes that scroll along the route
+      // Racing light overlay — a bright highlight that sweeps along the line
+      map.addSource(baseId+'-pulse-src', {type:'geojson', data:geojson, lineMetrics:true});
       map.addLayer({
-        id: baseId+'-pulse', type:'line', source:baseId,
+        id: baseId+'-pulse', type:'line', source:baseId+'-pulse-src',
         layout:{'line-cap':'round','line-join':'round'},
-        paint:{'line-color':'#ffffff','line-width':2,'line-opacity':0.55,'line-dasharray':[2, 6]}
+        paint:{
+          'line-width':6,
+          'line-opacity':0.6,
+          'line-gradient':['interpolate',['linear'],['line-progress'],
+            0,'rgba(255,255,255,0)',
+            0.45,'rgba(255,255,255,0)',
+            0.5,'rgba(255,255,255,0.9)',
+            0.55,'rgba(255,255,255,0)',
+            1,'rgba(255,255,255,0)'],
+        }
       });
     }
     allPts.push(...coords);
@@ -1412,16 +1423,28 @@ function updateJourneyPolyline(){
   _journeyLegLayerCount = layerCount;
   journeyPolyline = true;
 
-  // Animate pulse layers — scroll dashes along the route
-  let dashOffset = 0;
+  // Racing light animation — bright highlight sweeps along transit lines
+  let pulsePos = 0;
+  const PULSE_SPEED = 0.004;
+  const PULSE_WIDTH = 0.08;
   function animatePulse(){
     if(!journeyPolyline) return;
-    dashOffset = (dashOffset + 0.15) % 8;
+    pulsePos = (pulsePos + PULSE_SPEED) % 1;
+    const lo = Math.max(0, pulsePos - PULSE_WIDTH);
+    const hi = Math.min(1, pulsePos + PULSE_WIDTH);
     for(let i=0;i<layerCount;i++){
       const pulseId = `journey-leg-${i}-pulse`;
       if(map.getLayer(pulseId)){
-        map.setPaintProperty(pulseId, 'line-dasharray', [2, 6]);
-        map.setPaintProperty(pulseId, 'line-offset', dashOffset);
+        map.setPaintProperty(pulseId, 'line-gradient', [
+          'interpolate',['linear'],['line-progress'],
+          0, 'rgba(255,255,255,0)',
+          Math.max(0, lo - 0.01), 'rgba(255,255,255,0)',
+          lo, 'rgba(255,255,255,0.3)',
+          pulsePos, 'rgba(255,255,255,0.85)',
+          hi, 'rgba(255,255,255,0.3)',
+          Math.min(1, hi + 0.01), 'rgba(255,255,255,0)',
+          1, 'rgba(255,255,255,0)',
+        ]);
       }
     }
     requestAnimationFrame(animatePulse);
@@ -1439,118 +1462,80 @@ function updateJourneyPolyline(){
 }
 
 function showJourneyBottomSheetLoading(destName){
-  const sheet = document.getElementById('journey-bottom-sheet');
-  if(!sheet) return;
-  document.getElementById('jbs-dest').textContent = `To: ${destName}`;
-  const pill = document.getElementById('jbs-mode-pill');
-  if(pill){ pill.textContent = '🗺'; pill.style.background = '#5b8dee'; }
-  const rn = document.getElementById('jbs-route-name');
-  if(rn) rn.textContent = 'Finding route…';
-  const dur = document.getElementById('jbs-duration');
-  if(dur) dur.textContent = '—';
-  const dep = document.getElementById('jbs-depart-time');
-  if(dep) dep.textContent = '—';
-  const legs = document.getElementById('jbs-legs');
-  if(legs) legs.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:.8rem;font-weight:700;text-align:center">Calculating…</div>';
-  sheet.classList.add('show');
+  const routesEl = document.getElementById('sb-routes');
+  const detailEl = document.getElementById('sb-route-detail');
+  if(routesEl) routesEl.innerHTML = '<div style="padding:20px;color:var(--text3);font-size:.82rem;font-weight:700;text-align:center">Finding routes…</div>';
+  if(detailEl) detailEl.innerHTML = '';
+  const clearBtn = document.getElementById('sb-clear-btn');
+  if(clearBtn) clearBtn.style.display = 'block';
+  const goBtn = document.getElementById('jbs-go-btn');
+  if(goBtn) goBtn.style.display = 'none';
 }
 
 function showJourneyBottomSheet(journey, skipTabs=false){
-  const sheet = document.getElementById('journey-bottom-sheet');
-  if(!sheet) return;
-  sheet.classList.add('show');
-
-  if(destLoc) document.getElementById('jbs-dest').textContent = `To: ${destLoc.name}`;
-
   const MODE_EMOJI = {train:'🚆',tram:'🚊',bus:'🚌',vline:'🚂',walk:'🚶'};
   const LEG_COLORS = {train:'#094c8d',tram:'#2CA05A',bus:'#F5A623',vline:'#6c3483'};
+  const routesEl = document.getElementById('sb-routes');
+  const detailEl = document.getElementById('sb-route-detail');
 
   if(!journey){
-    const pill = document.getElementById('jbs-mode-pill');
-    if(pill){ pill.style.background='#aaa'; pill.textContent='🔍'; }
-    const rn = document.getElementById('jbs-route-name');
-    if(rn) rn.textContent = 'No route found';
-    const dur = document.getElementById('jbs-duration');
-    if(dur) dur.textContent = '—';
-    const dep = document.getElementById('jbs-depart-time');
-    if(dep) dep.textContent = '—';
-    const legsEl = document.getElementById('jbs-legs');
-    if(legsEl) legsEl.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:.8rem;font-weight:700;text-align:center">Try a different destination</div>';
+    if(routesEl) routesEl.innerHTML = '<div style="padding:20px;color:var(--text3);font-size:.82rem;font-weight:700;text-align:center">No routes found — try a different destination</div>';
+    if(detailEl) detailEl.innerHTML = '';
     return;
   }
 
-  const legs = journey.legs || [];
-  const transitLegs = legs.filter(l => l.type !== 'walk');
-  const firstTransit = transitLegs[0];
-  const totalWalk = legs.filter(l=>l.type==='walk').reduce((s,l)=>s+(l.duration||0),0);
-
-  // Summary row
-  const pill = document.getElementById('jbs-mode-pill');
-  if(pill){
-    if(firstTransit){ pill.style.background = LEG_COLORS[firstTransit.type]||'#5b8dee'; pill.textContent = MODE_EMOJI[firstTransit.type]||'🚌'; }
-    else { pill.style.background='#4ecdc4'; pill.textContent='🚶'; }
-  }
-  const dur = document.getElementById('jbs-duration');
-  if(dur) dur.textContent = `${journey.duration||'?'} min`;
-  const rn = document.getElementById('jbs-route-name');
-  if(rn) rn.textContent = firstTransit ? `via ${firstTransit.line||firstTransit.type}` : 'Walk only';
-  const dep = document.getElementById('jbs-depart-time');
-  if(dep) dep.textContent = journey.depart ? `Departs ${journey.depart}` : 'Now';
-
-  // Option tabs (only render on first load, not when switching tabs)
-  if(!skipTabs){
-    const optsEl = document.getElementById('jbs-options');
-    if(optsEl && allJourneys.length > 1){
-      optsEl.innerHTML = allJourneys.map((j,i) => {
-        const tl = (j.legs||[]).find(l=>l.type!=='walk');
-        const icon = tl ? (MODE_EMOJI[tl.type]||'🚌') : '🚶';
-        const color = tl ? (LEG_COLORS[tl.type]||'#5b8dee') : '#888';
-        const label = tl ? (tl.line||tl.type) : 'Walk';
-        return `<button class="jbs-opt${i===activeJourneyIdx?' active':''}" style="color:${color}" onclick="selectJourneyOption(${i})">
-          <span class="jbs-opt-icon">${icon}</span>
-          <span>${escHtml(label)}</span>
-          <span class="jbs-opt-time">${j.duration||'?'}m</span>
-        </button>`;
-      }).join('');
-    } else if(optsEl){
-      optsEl.innerHTML = '';
-    }
+  // Render route option cards
+  if(!skipTabs && routesEl && allJourneys.length > 0){
+    routesEl.innerHTML = allJourneys.map((j,i) => {
+      const tl = (j.legs||[]).find(l=>l.type!=='walk');
+      const icon = tl ? (MODE_EMOJI[tl.type]||'🚌') : '🚶';
+      const color = tl ? (LEG_COLORS[tl.type]||'#5b8dee') : '#888';
+      const summary = j.legs.filter(l=>l.type!=='walk').map(l=>`${MODE_EMOJI[l.type]||''} ${l.line||l.type}`).join(' → ') || 'Walk';
+      return `<div class="sb-route-card${i===activeJourneyIdx?' active':''}" onclick="selectJourneyOption(${i})">
+        <div class="sb-route-icon" style="background:${color}">${icon}</div>
+        <div class="sb-route-info">
+          <div class="sb-route-duration">${j.duration||'?'} min</div>
+          <div class="sb-route-summary">${escHtml(summary)}</div>
+        </div>
+        <div class="sb-route-time">${j.depart||''}</div>
+      </div>`;
+    }).join('');
   }
 
-  // Show Go button if we have a real route
+  // Render step-by-step legs for selected route
+  if(detailEl){
+    const legs = journey.legs || [];
+    detailEl.innerHTML = legs.map(leg => {
+      const isWalk = leg.type === 'walk';
+      const color  = isWalk ? '#888' : (LEG_COLORS[leg.type]||'#5b8dee');
+      const emoji  = MODE_EMOJI[leg.type] || '🚌';
+
+      let title, sub;
+      if(isWalk){
+        title = `Walk to ${escHtml(leg.to||'stop')}`;
+        sub   = `${leg.duration||'?'} min`;
+      } else {
+        const sc = leg.stopCount || 0;
+        const stopsStr = sc > 0 ? `${sc} stop${sc !== 1 ? 's' : ''} · ` : '';
+        title = `${escHtml(leg.line||leg.type)} — board at ${escHtml(leg.from||'')}`;
+        sub   = `${stopsStr}${leg.duration||'?'} min${leg.minsUntilDep > 0 ? ` · departs in ${leg.minsUntilDep} min` : ''}`;
+      }
+
+      return `<div class="sb-leg">
+        <div class="sb-leg-icon ${isWalk?'walk':'transit'}" style="${isWalk?'':`background:${color}`}">${emoji}</div>
+        <div class="sb-leg-body">
+          <div class="sb-leg-title">${title}</div>
+          <div class="sb-leg-sub">${sub}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Show Go button
   const goBtn = document.getElementById('jbs-go-btn');
   if(goBtn) goBtn.style.display = journey ? 'block' : 'none';
-
-  // Step-by-step legs
-  const legsEl = document.getElementById('jbs-legs');
-  if(!legsEl) return;
-
-  legsEl.innerHTML = legs.map(leg => {
-    const isWalk = leg.type === 'walk';
-    const color  = isWalk ? '#888' : (LEG_COLORS[leg.type]||'#5b8dee');
-    const emoji  = MODE_EMOJI[leg.type] || '🚌';
-    const iconCls = isWalk ? 'walk' : 'transit';
-    const iconStyle = isWalk ? '' : `background:${color}`;
-
-    let title, sub;
-    if(isWalk){
-      title = `Walk to ${escHtml(leg.to||'stop')}`;
-      sub   = `${leg.duration||'?'} min`;
-    } else {
-      const sc = leg.stopCount || 0;
-      const stopsStr = sc > 0 ? `${sc} stop${sc !== 1 ? 's' : ''} · ` : '';
-      title = `${escHtml(leg.line||leg.type)} — board at ${escHtml(leg.from||'')}`;
-      sub   = `${stopsStr}${leg.duration||'?'} min${leg.minsUntilDep > 0 ? ` · departs in ${leg.minsUntilDep} min` : ''}`;
-    }
-
-    return `<div class="jbs-leg">
-      <div class="jbs-leg-icon ${iconCls}" style="${iconStyle}">${emoji}</div>
-      <div class="jbs-leg-body">
-        <div class="jbs-leg-title">${title}</div>
-        <div class="jbs-leg-sub">${sub}</div>
-      </div>
-    </div>`;
-  }).join('');
+  const clearBtn = document.getElementById('sb-clear-btn');
+  if(clearBtn) clearBtn.style.display = 'block';
 }
 
 function placeDestPin(lat, lng, name, fullAddr){
@@ -1820,8 +1805,18 @@ function clearDestination(){
   allJourneys = [];
   activeJourneyIdx = 0;
   destLoc = null;
-  const sheet = document.getElementById('journey-bottom-sheet');
-  if(sheet) sheet.classList.remove('show');
+  // Clear sidebar route display
+  const routesEl = document.getElementById('sb-routes');
+  const detailEl = document.getElementById('sb-route-detail');
+  if(routesEl) routesEl.innerHTML = '';
+  if(detailEl) detailEl.innerHTML = '';
+  const goBtn = document.getElementById('jbs-go-btn');
+  if(goBtn) goBtn.style.display = 'none';
+  const clearBtn = document.getElementById('sb-clear-btn');
+  if(clearBtn) clearBtn.style.display = 'none';
+  // Clear search input
+  const searchInput = document.getElementById('addr-search-input');
+  if(searchInput) searchInput.value = '';
   // Restore isometric view
   map.easeTo({pitch:0, bearing:0, duration:800});
 }
