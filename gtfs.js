@@ -440,9 +440,15 @@ function planJourney(fromLat, fromLng, toLat, toLng, fromName, toName) {
         const route       = trip ? routes.get(trip.routeId) : null;
         const mode        = trip?.mode || fromStop.mode;
         const stopCount   = i - fromIdx;
-        const transitMin  = Math.round(stopCount * (mode === 'train' ? 2.5 : 2));
         const depMins     = depToMins(seq[fromIdx].dep);
+        const arrMins     = depToMins(seq[i].dep);
+        // Use real GTFS scheduled times when available, else estimate
+        const transitMin  = (depMins !== null && arrMins !== null && arrMins > depMins)
+          ? arrMins - depMins
+          : Math.round(stopCount * (mode === 'train' ? 2 : 1.5));
         const minsUntilDep = depMins !== null ? Math.max(0, depMins - nowMins) : 3;
+        // Skip trips that departed more than 5 min ago
+        if (depMins !== null && depMins < nowMins - 5) continue;
         const wTo         = walkMins(fromStop.distKm);
         const wFrom       = walkMins(toStop.distKm);
         const total       = wTo + minsUntilDep + transitMin + wFrom;
@@ -484,7 +490,7 @@ function planJourney(fromLat, fromLng, toLat, toLng, fromName, toName) {
   // ── Transfer journeys (one change) ────────────────────────────────────────
   // Uses proximity-based transfers: any stop within 400m is a valid transfer point,
   // not just those listed in the sparse transfers.txt.
-  if (options.length < 2) {
+  if (options.length < 4) {
     outer:
     for (const fromStop of fromStops.slice(0, 5)) {
       const tripSet = stopTrips.get(fromStop.id);
@@ -535,12 +541,21 @@ function planJourney(fromLat, fromLng, toLat, toLng, fromName, toName) {
                 const route2     = trip2 ? routes.get(trip2.routeId) : null;
                 const mode1      = trip1?.mode || fromStop.mode;
                 const mode2      = trip2?.mode || 'bus';
-                const transit1   = Math.round((i - fromIdx) * (mode1 === 'train' ? 2.5 : 2));
-                const transit2   = Math.round((j - xferIdx) * (mode2 === 'train' ? 2.5 : 2));
+                const dep1From   = depToMins(seq[fromIdx].dep);
+                const dep1To     = depToMins(seq[i].dep);
+                const dep2From   = depToMins(seq2[xferIdx].dep);
+                const dep2To     = depToMins(seq2[j].dep);
+                const transit1   = (dep1From !== null && dep1To !== null && dep1To > dep1From)
+                  ? dep1To - dep1From
+                  : Math.round((i - fromIdx) * (mode1 === 'train' ? 2 : 1.5));
+                const transit2   = (dep2From !== null && dep2To !== null && dep2To > dep2From)
+                  ? dep2To - dep2From
+                  : Math.round((j - xferIdx) * (mode2 === 'train' ? 2 : 1.5));
+                // Skip trips that departed more than 5 min ago
+                if (dep1From !== null && dep1From < nowMins - 5) continue;
                 const xferWalkKm = haversineKm(xferStop.lat, xferStop.lng, boardStop2.lat, boardStop2.lng);
                 const xferMins   = Math.max(2, walkMins(xferWalkKm));
-                const depMins    = depToMins(seq[fromIdx].dep);
-                const wait1      = depMins !== null ? Math.max(0, depMins - nowMins) : 3;
+                const wait1      = dep1From !== null ? Math.max(0, dep1From - nowMins) : 3;
                 const wTo        = walkMins(fromStop.distKm);
                 const wFrom      = walkMins(toStop.distKm);
                 const total      = wTo + wait1 + transit1 + xferMins + transit2 + wFrom;
@@ -602,10 +617,10 @@ function planJourney(fromLat, fromLng, toLat, toLng, fromName, toName) {
   const final = [];
   for (const mode of modeOrder) {
     const best = deduped.find(o => getPrimaryMode(o) === mode);
-    if (best && final.length < 3) final.push(best);
+    if (best && final.length < 5) final.push(best);
   }
   for (const opt of deduped) {
-    if (final.length >= 3) break;
+    if (final.length >= 5) break;
     if (!final.includes(opt)) final.push(opt);
   }
   final.sort((a, b) => a.score - b.score);

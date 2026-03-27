@@ -449,7 +449,7 @@ async function valhallaWalkPath(fromLat, fromLng, toLat, toLng) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(3000),
     });
     if (!r.ok) {
       console.warn(`[Valhalla] HTTP ${r.status}`);
@@ -591,21 +591,18 @@ app.post('/api/journey', async (req, res) => {
     const t0 = Date.now();
     const journeys = gtfs.planJourney(fromLat, fromLng, toLat, toLng, fromName, toName);
     if (!journeys.length) throw new Error('No routes found');
+    const planMs = Date.now() - t0;
 
-    // Return journey immediately — walk paths enriched in background
-    // Frontend draws straight-line walk segments first, then fetches refined paths
-    console.log(`  ✓ GTFS journey: ${journeys.length} options in ${Date.now()-t0}ms (${fromLat},${fromLng}) → (${toLat},${toLng})`);
+    // Enrich walk legs with Valhalla road geometry (all in parallel, 3s timeout)
+    await enrichWalkLegs(journeys);
 
-    const response = {
+    console.log(`  ✓ GTFS journey: ${journeys.length} options in ${Date.now()-t0}ms (plan: ${planMs}ms) (${fromLat},${fromLng}) → (${toLat},${toLng})`);
+    return res.json({
       mode:     'live',
       from:     { lat: fromLat, lng: fromLng, name: fromName },
       to:       { lat: toLat,   lng: toLng,   name: toName },
       journeys,
-    };
-    res.json(response);
-
-    // Fire-and-forget: enrich walk legs for future cache (doesn't block response)
-    enrichWalkLegs(journeys).catch(() => {});
+    });
   } catch (e) {
     console.warn('GTFS journey failed:', e.message);
     return res.json({ mode: 'fallback', from: { lat: fromLat, lng: fromLng, name: fromName },
