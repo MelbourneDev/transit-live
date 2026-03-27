@@ -1479,15 +1479,16 @@ function updateJourneyPolyline(){
   _journeyLegLayerCount = layerCount;
   journeyPolyline = true;
 
-  // Flowing dash animation — directional arrows scrolling along transit lines
+  // Flowing dash animation — directional dashes scrolling along transit lines
   let dashPhase = 0;
   function animateDash(){
     if(!journeyPolyline) return;
-    dashPhase = (dashPhase + 0.15) % 8;
+    dashPhase = (dashPhase + 0.08) % 6;
     for(let i=0;i<layerCount;i++){
       const pulseId = `journey-leg-${i}-pulse`;
       if(map.getLayer(pulseId)){
-        map.setPaintProperty(pulseId, 'line-dasharray', [0, 4 + dashPhase, 3, 4 - dashPhase]);
+        // All values must stay positive — offset the gap with the phase
+        map.setPaintProperty(pulseId, 'line-dasharray', [2, dashPhase + 1, 0.01, 6 - dashPhase]);
       }
     }
     requestAnimationFrame(animateDash);
@@ -1556,8 +1557,8 @@ function showJourneyBottomSheet(journey, skipTabs=false){
       const emoji  = MODE_EMOJI[leg.type] || '🚌';
 
       if(isWalk){
-        html += `<div class="sb-tl-step">
-          <div class="sb-tl-bar" style="background:${color}"></div>
+        html += `<div class="sb-tl-step walk-step">
+          <div class="sb-tl-bar dashed"></div>
           <div class="sb-tl-dot walk"></div>
           <div class="sb-tl-content">
             <div class="sb-tl-title">🚶 Walk to ${escHtml(leg.to||'stop')}</div>
@@ -1570,8 +1571,8 @@ function showJourneyBottomSheet(journey, skipTabs=false){
         const depStr = leg.minsUntilDep > 0 ? `departs in ${leg.minsUntilDep} min` : '';
         const details = [stopsStr, `${leg.duration||'?'} min`, depStr].filter(Boolean).join(' · ');
 
-        // Board instruction
-        html += `<div class="sb-tl-step">
+        // Board instruction — with tall coloured bar
+        html += `<div class="sb-tl-step board-step">
           <div class="sb-tl-bar" style="background:${color}"></div>
           <div class="sb-tl-dot transit" style="border-color:${color}"></div>
           <div class="sb-tl-content">
@@ -1580,9 +1581,8 @@ function showJourneyBottomSheet(journey, skipTabs=false){
           </div>
         </div>`;
 
-        // Alight instruction
-        html += `<div class="sb-tl-step">
-          <div class="sb-tl-bar" style="background:${(idx < legs.length-1) ? '#aaa' : 'transparent'}"></div>
+        // Alight instruction — no bar, just a dot
+        html += `<div class="sb-tl-step alight-step">
           <div class="sb-tl-dot transit" style="border-color:${color}"></div>
           <div class="sb-tl-content">
             <div class="sb-tl-title">Get off at ${escHtml(leg.to||'')}</div>
