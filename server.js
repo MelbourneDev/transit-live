@@ -9,6 +9,7 @@ const fs         = require('fs');
 const nodemailer = require('nodemailer');
 const jwt        = require('jsonwebtoken');
 const gtfs       = require('./gtfs');
+const walkRouter = require('./walkrouter');
 
 const app     = express();
 const PORT    = process.env.PORT || 3000;
@@ -591,6 +592,19 @@ app.post('/api/journey', async (req, res) => {
     const t0 = Date.now();
     const journeys = gtfs.planJourney(fromLat, fromLng, toLat, toLng, fromName, toName);
     if (!journeys.length) throw new Error('No routes found');
+
+    // Enrich walk legs with local A* paths (instant, no external API)
+    if (walkRouter.isLoaded()) {
+      for (const j of journeys) {
+        for (const leg of j.legs) {
+          if (leg.type !== 'walk') continue;
+          if (leg.fromLat == null || leg.toLat == null) continue;
+          const wp = walkRouter.findPath(leg.fromLat, leg.fromLng, leg.toLat, leg.toLng);
+          if (wp && wp.length > 2) leg.walkPath = wp;
+        }
+      }
+    }
+
     console.log(`  ✓ GTFS journey: ${journeys.length} options in ${Date.now()-t0}ms (${fromLat},${fromLng}) → (${toLat},${toLng})`);
     return res.json({
       mode:     'live',
@@ -1022,7 +1036,12 @@ app.listen(PORT, () => {
   // Load GTFS static data in the background — journey planning available once complete
   const gtfsPath = path.join(__dirname, 'gtfs.zip');
   if (fs.existsSync(gtfsPath)) {
-    setImmediate(() => { gtfs.load(gtfsPath); buildRouteLookup(); gtfs.buildRaptorIndex(); });
+    setImmediate(() => {
+      gtfs.load(gtfsPath); buildRouteLookup(); gtfs.buildRaptorIndex();
+      // Load walk network for local A* walking paths
+      const roadsPath = path.join(__dirname, 'melbourne_roads.json');
+      walkRouter.load(roadsPath);
+    });
   } else {
     console.warn('⚠ gtfs.zip not found — journey planning unavailable');
   }
