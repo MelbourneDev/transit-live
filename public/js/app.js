@@ -1233,6 +1233,7 @@ function initSearch(){
 }
 
 let customOrigin = null; // {lat, lng, name} — set when user picks a "from" address
+let _originMarker = null; // green pin for custom origin
 
 function initFromSearch(){
   const fromInput = document.getElementById('sb-from-input');
@@ -1255,7 +1256,17 @@ function initFromSearch(){
   fromInput.addEventListener('input', ()=>{
     clearTimeout(debounceTimer);
     const q = fromInput.value.trim();
-    if(!q){ results.innerHTML=''; results.classList.remove('show'); customOrigin=null; return; }
+
+    // Detect "my location" variants — revert to GPS
+    if(/^my\s*loc/i.test(q) || q.toLowerCase() === 'your location'){
+      fromInput.value = 'Your location';
+      customOrigin = null;
+      if(_originMarker){ _originMarker.remove(); _originMarker = null; }
+      results.innerHTML=''; results.classList.remove('show');
+      return;
+    }
+
+    if(!q){ customOrigin=null; if(_originMarker){_originMarker.remove();_originMarker=null;} results.innerHTML=''; results.classList.remove('show'); return; }
     results.innerHTML='<div class="addr-searching">Searching…</div>';
     results.classList.add('show');
     debounceTimer = setTimeout(async ()=>{
@@ -1267,8 +1278,9 @@ function initFromSearch(){
           const parts = l.name.split(',');
           const main = parts[0].trim();
           const sub = parts.slice(1,3).map(s=>s.trim()).filter(Boolean).join(', ');
+          const fullDisplay = sub ? `${main}, ${sub}` : main;
           const ico = typeIco[l.type]||'📍';
-          return `<div class="addr-suggestion" data-lat="${l.lat}" data-lng="${l.lng}" data-name="${escHtml(main)}">
+          return `<div class="addr-suggestion" data-lat="${l.lat}" data-lng="${l.lng}" data-name="${escHtml(fullDisplay)}">
             <span class="addr-sug-ico">${ico}</span>
             <div><div class="addr-result-main">${escHtml(main)}</div>
             ${sub?`<div class="addr-result-sub">${escHtml(sub)}</div>`:''}</div>
@@ -1284,6 +1296,11 @@ function initFromSearch(){
             customOrigin = {lat, lng, name};
             fromInput.value = name;
             results.innerHTML=''; results.classList.remove('show');
+            // Place green origin pin on map
+            if(_originMarker){ _originMarker.remove(); }
+            const pinEl = document.createElement('div');
+            pinEl.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#2CA05A" stroke="white" stroke-width="3"/></svg>';
+            _originMarker = new maplibregl.Marker({element:pinEl,anchor:'center'}).setLngLat([lng,lat]).addTo(map);
           });
         });
       }catch(e){}
@@ -1429,7 +1446,7 @@ function updateJourneyPolyline(){
       map.addLayer({
         id: baseId, type:'line', source:baseId,
         layout:{'line-cap':'round','line-join':'round'},
-        paint:{'line-color':'#6C63FF','line-width':4,'line-opacity':0.85,'line-dasharray':[0.8, 1.2]}
+        paint:{'line-color':'#6C63FF','line-width':4,'line-opacity':0.85,'line-dasharray':[0.01, 1.5]}
       });
     } else {
       // Transit: vibrant colored line with crisp dark border
@@ -1873,6 +1890,7 @@ function clearDestination(){
   const fromInput = document.getElementById('sb-from-input');
   if(fromInput) fromInput.value = 'Your location';
   customOrigin = null;
+  if(_originMarker){ _originMarker.remove(); _originMarker = null; }
   // Restore isometric view
   map.easeTo({pitch:0, bearing:0, duration:800});
 }
