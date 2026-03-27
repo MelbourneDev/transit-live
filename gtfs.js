@@ -690,11 +690,18 @@ function planJourney(fromLat, fromLng, toLat, toLng, fromName, toName) {
     }
   }
 
+  // Filter out walk-only routes unless the trip is short (< 5km)
+  const distKm = haversineKm(fromLat, fromLng, toLat, toLng);
+  const filtered = results.filter(opt => {
+    const hasTransit = opt.legs.some(l => l.type !== 'walk');
+    return hasTransit || distKm < 5;
+  });
+
   // Dedup and variety
-  results.sort((a, b) => a.score - b.score);
+  filtered.sort((a, b) => a.score - b.score);
   const seen = new Set();
   const deduped = [];
-  for (const opt of results) {
+  for (const opt of filtered) {
     const sig = opt.legs.filter(l => l.type !== 'walk').map(l => `${l.type}:${l.line}`).join('|');
     if (seen.has(sig)) continue;
     seen.add(sig);

@@ -591,12 +591,7 @@ app.post('/api/journey', async (req, res) => {
     const t0 = Date.now();
     const journeys = gtfs.planJourney(fromLat, fromLng, toLat, toLng, fromName, toName);
     if (!journeys.length) throw new Error('No routes found');
-    const planMs = Date.now() - t0;
-
-    // Enrich walk legs with Valhalla road geometry (all in parallel, 3s timeout)
-    await enrichWalkLegs(journeys);
-
-    console.log(`  ✓ GTFS journey: ${journeys.length} options in ${Date.now()-t0}ms (plan: ${planMs}ms) (${fromLat},${fromLng}) → (${toLat},${toLng})`);
+    console.log(`  ✓ GTFS journey: ${journeys.length} options in ${Date.now()-t0}ms (${fromLat},${fromLng}) → (${toLat},${toLng})`);
     return res.json({
       mode:     'live',
       from:     { lat: fromLat, lng: fromLng, name: fromName },
