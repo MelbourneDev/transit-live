@@ -1106,6 +1106,7 @@ async function init(){
   updateShowAllBtn(); // set button label to match initial showAll=false
   buildFilterPanel();
   initSearch();
+  initFromSearch();
 
   // Vehicles load on demand when user enables a mode in the filter panel
   // No demo or live fetch at startup — clean map
@@ -1232,6 +1233,65 @@ function initSearch(){
   });
 }
 
+let customOrigin = null; // {lat, lng, name} — set when user picks a "from" address
+
+function initFromSearch(){
+  const fromInput = document.getElementById('sb-from-input');
+  const results   = document.getElementById('addr-suggestions');
+  if(!fromInput || !results) return;
+
+  let debounceTimer = null;
+  const typeIco = {train:'🚆',tram:'🚋',bus:'🚌',station:'🚉',stop:'🚏',address:'🏠'};
+
+  fromInput.addEventListener('focus', ()=>{
+    // Clear "Your location" placeholder on focus so user can type
+    if(fromInput.value === 'Your location') fromInput.value = '';
+  });
+  fromInput.addEventListener('blur', ()=>{
+    // Restore placeholder if empty
+    setTimeout(()=>{
+      if(!fromInput.value.trim() && !customOrigin) fromInput.value = 'Your location';
+    }, 200);
+  });
+  fromInput.addEventListener('input', ()=>{
+    clearTimeout(debounceTimer);
+    const q = fromInput.value.trim();
+    if(!q){ results.innerHTML=''; results.classList.remove('show'); customOrigin=null; return; }
+    results.innerHTML='<div class="addr-searching">Searching…</div>';
+    results.classList.add('show');
+    debounceTimer = setTimeout(async ()=>{
+      try{
+        const r = await fetch(`/api/journey/autocomplete?q=${encodeURIComponent(q)}`);
+        const data = await r.json();
+        if(!data.length){ results.innerHTML='<div class="addr-no-results">No results</div>'; return; }
+        results.innerHTML = data.map((l,i)=>{
+          const parts = l.name.split(',');
+          const main = parts[0].trim();
+          const sub = parts.slice(1,3).map(s=>s.trim()).filter(Boolean).join(', ');
+          const ico = typeIco[l.type]||'📍';
+          return `<div class="addr-suggestion" data-lat="${l.lat}" data-lng="${l.lng}" data-name="${escHtml(main)}">
+            <span class="addr-sug-ico">${ico}</span>
+            <div><div class="addr-result-main">${escHtml(main)}</div>
+            ${sub?`<div class="addr-result-sub">${escHtml(sub)}</div>`:''}</div>
+          </div>`;
+        }).join('');
+        results.classList.add('show');
+        results.querySelectorAll('.addr-suggestion').forEach(el=>{
+          el.addEventListener('click', e=>{
+            e.stopPropagation();
+            const lat = parseFloat(el.dataset.lat);
+            const lng = parseFloat(el.dataset.lng);
+            const name = el.dataset.name;
+            customOrigin = {lat, lng, name};
+            fromInput.value = name;
+            results.innerHTML=''; results.classList.remove('show');
+          });
+        });
+      }catch(e){}
+    }, 300);
+  });
+}
+
 function clearAddrSearch(){
   const input = document.getElementById('addr-search-input');
   const results = document.getElementById('addr-suggestions');
@@ -1249,9 +1309,10 @@ function selectAddrResult(lat, lng, name, fullAddr){
   destLoc = {lat:+lat, lng:+lng, name};
   // Show bottom sheet in loading state right away
   showJourneyBottomSheetLoading(name);
-  // Fetch real route from server
-  if(userLoc){
-    fetchAndActivateJourney(userLoc.lat, userLoc.lng, +lat, +lng, name);
+  // Fetch real route from server — use custom origin if set, else GPS
+  const origin = customOrigin || userLoc;
+  if(origin){
+    fetchAndActivateJourney(origin.lat, origin.lng, +lat, +lng, name);
   } else {
     updateJourneyVehicles();
   }
@@ -1384,14 +1445,14 @@ function updateJourneyPolyline(){
         layout:{'line-cap':'round','line-join':'round'},
         paint:{'line-color':color,'line-width':6,'line-opacity':0.95}
       });
-      // Racing light — sharp bright point that sweeps along the line
+      // Racing spark — sharp point of light that sweeps along the line
       map.addSource(baseId+'-pulse-src', {type:'geojson', data:geojson, lineMetrics:true});
       map.addLayer({
         id: baseId+'-pulse', type:'line', source:baseId+'-pulse-src',
         layout:{'line-cap':'round','line-join':'round'},
         paint:{
-          'line-width':4,
-          'line-opacity':0.8,
+          'line-width':3,
+          'line-opacity':1,
           'line-gradient':['interpolate',['linear'],['line-progress'],
             0,'rgba(255,255,255,0)',
             0.45,'rgba(255,255,255,0)',
@@ -1428,25 +1489,23 @@ function updateJourneyPolyline(){
 
   // Racing light animation — bright highlight sweeps along transit lines
   let pulsePos = 0;
-  const PULSE_SPEED = 0.0018;
-  const PULSE_WIDTH = 0.015;
+  const PULSE_SPEED = 0.0015;
   function animatePulse(){
     if(!journeyPolyline) return;
     pulsePos = (pulsePos + PULSE_SPEED) % 1;
-    const lo = Math.max(0, pulsePos - PULSE_WIDTH);
-    const hi = Math.min(1, pulsePos + PULSE_WIDTH);
+    // Sharp spark — near-instant on/off with 0.001 transition
+    const p = pulsePos;
+    const s = 0.001; // sharpness — almost zero transition
     for(let i=0;i<layerCount;i++){
       const pulseId = `journey-leg-${i}-pulse`;
       if(map.getLayer(pulseId)){
         map.setPaintProperty(pulseId, 'line-gradient', [
           'interpolate',['linear'],['line-progress'],
-          0, 'rgba(255,255,255,0)',
-          lo, 'rgba(255,255,255,0)',
-          Math.min(lo + 0.005, pulsePos), 'rgba(255,255,255,0.95)',
-          pulsePos, 'rgba(255,255,255,1)',
-          Math.max(hi - 0.005, pulsePos), 'rgba(255,255,255,0.95)',
-          hi, 'rgba(255,255,255,0)',
-          1, 'rgba(255,255,255,0)',
+          0,           'rgba(255,255,255,0)',
+          Math.max(0, p - s), 'rgba(255,255,255,0)',
+          p,           'rgba(255,255,255,1)',
+          Math.min(1, p + s), 'rgba(255,255,255,0)',
+          1,           'rgba(255,255,255,0)',
         ]);
       }
     }
@@ -1817,9 +1876,12 @@ function clearDestination(){
   if(goBtn) goBtn.style.display = 'none';
   const clearBtn = document.getElementById('sb-clear-btn');
   if(clearBtn) clearBtn.style.display = 'none';
-  // Clear search input
+  // Clear search inputs and custom origin
   const searchInput = document.getElementById('addr-search-input');
   if(searchInput) searchInput.value = '';
+  const fromInput = document.getElementById('sb-from-input');
+  if(fromInput) fromInput.value = 'Your location';
+  customOrigin = null;
   // Restore isometric view
   map.easeTo({pitch:0, bearing:0, duration:800});
 }
