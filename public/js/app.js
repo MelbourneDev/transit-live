@@ -124,7 +124,7 @@ function locateUser(){
 // ── Map ────────────────────────────────────────────────────────────────
 const map = new maplibregl.Map({
   container: 'map',
-  style: '/styles/maplibre-style.json',
+  style: '/styles/maplibre-dark.json',
   center: [144.9631, -37.8136],  // [lng, lat]
   zoom: 13,
   pitch: 0,
@@ -137,10 +137,10 @@ map.on('error', e => console.error('[MapLibre error]', e.error?.message || e));
 map.on('load', () => {
   map.setFog({
     range: [2, 12],
-    color: '#d4eef5',
+    color: '#0d1b2a',
     'horizon-blend': 0.08,
-    'high-color': '#a8d8e8',
-    'space-color': '#7ec8e3'
+    'high-color': '#1a1a2e',
+    'space-color': '#0a0a1a'
   });
 });
 
@@ -1388,7 +1388,6 @@ function clearJourneyLayers(){
     for(const suffix of ['-pulse', '-border', '']){
       if(map.getLayer(id+suffix)) map.removeLayer(id+suffix);
     }
-    if(map.getSource(id+'-pulse-src')) map.removeSource(id+'-pulse-src');
     if(map.getSource(id)) map.removeSource(id);
   }
   _journeyLegLayerCount = 0;
@@ -1444,20 +1443,14 @@ function updateJourneyPolyline(){
         layout:{'line-cap':'round','line-join':'round'},
         paint:{'line-color':color,'line-width':6,'line-opacity':0.95}
       });
-      // Racing glow — visible bright spot that sweeps along the line
-      map.addSource(baseId+'-pulse-src', {type:'geojson', data:geojson, lineMetrics:true});
+      // Flowing directional dashes — white arrows scrolling along the route
       map.addLayer({
-        id: baseId+'-pulse', type:'line', source:baseId+'-pulse-src',
-        layout:{'line-cap':'round','line-join':'round'},
+        id: baseId+'-pulse', type:'line', source:baseId,
+        layout:{'line-cap':'butt','line-join':'round'},
         paint:{
-          'line-width':5,
-          'line-opacity':1,
-          'line-gradient':['interpolate',['linear'],['line-progress'],
-            0,'rgba(255,255,255,0)',
-            0.45,'rgba(255,255,255,0)',
-            0.5,'rgba(255,255,255,0.9)',
-            0.55,'rgba(255,255,255,0)',
-            1,'rgba(255,255,255,0)'],
+          'line-color':'rgba(255,255,255,0.6)',
+          'line-width':2.5,
+          'line-dasharray':[3, 5],
         }
       });
     }
@@ -1486,32 +1479,20 @@ function updateJourneyPolyline(){
   _journeyLegLayerCount = layerCount;
   journeyPolyline = true;
 
-  // Racing light animation — bright highlight sweeps along transit lines
-  let pulsePos = 0;
-  const PULSE_SPEED = 0.0015;
-  const PULSE_W = 0.03; // width of the glow
-  function animatePulse(){
+  // Flowing dash animation — directional arrows scrolling along transit lines
+  let dashPhase = 0;
+  function animateDash(){
     if(!journeyPolyline) return;
-    pulsePos = (pulsePos + PULSE_SPEED) % 1;
-    const p = pulsePos;
+    dashPhase = (dashPhase + 0.15) % 8;
     for(let i=0;i<layerCount;i++){
       const pulseId = `journey-leg-${i}-pulse`;
       if(map.getLayer(pulseId)){
-        map.setPaintProperty(pulseId, 'line-gradient', [
-          'interpolate',['linear'],['line-progress'],
-          0, 'rgba(255,255,255,0)',
-          Math.max(0, p - PULSE_W), 'rgba(255,255,255,0)',
-          Math.max(0, p - PULSE_W*0.3), 'rgba(255,255,255,0.7)',
-          p, 'rgba(255,255,255,1)',
-          Math.min(1, p + PULSE_W*0.3), 'rgba(255,255,255,0.7)',
-          Math.min(1, p + PULSE_W), 'rgba(255,255,255,0)',
-          1, 'rgba(255,255,255,0)',
-        ]);
+        map.setPaintProperty(pulseId, 'line-dasharray', [0, 4 + dashPhase, 3, 4 - dashPhase]);
       }
     }
-    requestAnimationFrame(animatePulse);
+    requestAnimationFrame(animateDash);
   }
-  animatePulse();
+  animateDash();
 
   if(allPts.length > 0){
     // Switch to birds-eye for route clarity, then fit
@@ -1564,33 +1545,59 @@ function showJourneyBottomSheet(journey, skipTabs=false){
     }).join('');
   }
 
-  // Render step-by-step legs for selected route
+  // Render step-by-step legs with timeline bar, board AND alight instructions
   if(detailEl){
     const legs = journey.legs || [];
-    detailEl.innerHTML = legs.map(leg => {
+    let html = '<div class="sb-timeline">';
+
+    legs.forEach((leg, idx) => {
       const isWalk = leg.type === 'walk';
-      const color  = isWalk ? '#888' : (LEG_COLORS[leg.type]||'#5b8dee');
+      const color  = isWalk ? '#aaa' : (LEG_COLORS[leg.type] || leg.color || '#5b8dee');
       const emoji  = MODE_EMOJI[leg.type] || '🚌';
 
-      let title, sub;
       if(isWalk){
-        title = `Walk to ${escHtml(leg.to||'stop')}`;
-        sub   = `${leg.duration||'?'} min`;
+        html += `<div class="sb-tl-step">
+          <div class="sb-tl-bar" style="background:${color}"></div>
+          <div class="sb-tl-dot walk"></div>
+          <div class="sb-tl-content">
+            <div class="sb-tl-title">🚶 Walk to ${escHtml(leg.to||'stop')}</div>
+            <div class="sb-tl-sub">${leg.duration||'?'} min</div>
+          </div>
+        </div>`;
       } else {
         const sc = leg.stopCount || 0;
-        const stopsStr = sc > 0 ? `${sc} stop${sc !== 1 ? 's' : ''} · ` : '';
-        title = `${escHtml(leg.line||leg.type)} — board at ${escHtml(leg.from||'')}`;
-        sub   = `${stopsStr}${leg.duration||'?'} min${leg.minsUntilDep > 0 ? ` · departs in ${leg.minsUntilDep} min` : ''}`;
-      }
+        const stopsStr = sc > 0 ? `${sc} stop${sc !== 1 ? 's' : ''}` : '';
+        const depStr = leg.minsUntilDep > 0 ? `departs in ${leg.minsUntilDep} min` : '';
+        const details = [stopsStr, `${leg.duration||'?'} min`, depStr].filter(Boolean).join(' · ');
 
-      return `<div class="sb-leg">
-        <div class="sb-leg-icon ${isWalk?'walk':'transit'}" style="${isWalk?'':`background:${color}`}">${emoji}</div>
-        <div class="sb-leg-body">
-          <div class="sb-leg-title">${title}</div>
-          <div class="sb-leg-sub">${sub}</div>
-        </div>
-      </div>`;
-    }).join('');
+        // Board instruction
+        html += `<div class="sb-tl-step">
+          <div class="sb-tl-bar" style="background:${color}"></div>
+          <div class="sb-tl-dot transit" style="border-color:${color}"></div>
+          <div class="sb-tl-content">
+            <div class="sb-tl-title">${emoji} Board <strong>${escHtml(leg.line||leg.type)}</strong> at ${escHtml(leg.from||'')}</div>
+            <div class="sb-tl-sub">${details}</div>
+          </div>
+        </div>`;
+
+        // Alight instruction
+        html += `<div class="sb-tl-step">
+          <div class="sb-tl-bar" style="background:${(idx < legs.length-1) ? '#aaa' : 'transparent'}"></div>
+          <div class="sb-tl-dot transit" style="border-color:${color}"></div>
+          <div class="sb-tl-content">
+            <div class="sb-tl-title">Get off at ${escHtml(leg.to||'')}</div>
+          </div>
+        </div>`;
+      }
+    });
+
+    // Final destination dot
+    html += `<div class="sb-tl-step last">
+      <div class="sb-tl-dot dest"></div>
+      <div class="sb-tl-content"><div class="sb-tl-title">📍 ${escHtml(destLoc?.name||'Destination')}</div></div>
+    </div>`;
+    html += '</div>';
+    detailEl.innerHTML = html;
   }
 
   // Show Go button
