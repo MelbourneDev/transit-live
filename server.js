@@ -985,7 +985,7 @@ app.listen(PORT, () => {
   // Load GTFS static data in the background — journey planning available once complete
   const gtfsPath = path.join(__dirname, 'gtfs.zip');
   if (fs.existsSync(gtfsPath)) {
-    setImmediate(() => { gtfs.load(gtfsPath); buildRouteLookup(); });
+    setImmediate(() => { gtfs.load(gtfsPath); buildRouteLookup(); gtfs.buildRaptorIndex(); });
   } else {
     console.warn('⚠ gtfs.zip not found — journey planning unavailable');
   }

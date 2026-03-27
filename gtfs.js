@@ -406,230 +406,301 @@ function clipShape(shape, fromStop, toStop) {
   return shape.slice(fromBest, toBest + 1);
 }
 
-// ── Mode-varied stop selection for journey planning ───────────────────────────
-// Ensures at least 2 stops per available mode so the planner can find
-// train, tram, AND bus options — not just whichever mode has the closest stop.
-function nearestStopsVaried(lat, lng) {
-  const all = nearestStops(lat, lng, 80, 1.5);
-  const byMode = { train: [], tram: [], bus: [], vline: [] };
-  for (const s of all) {
-    if (byMode[s.mode] && byMode[s.mode].length < 4) byMode[s.mode].push(s);
-  }
-  // Combine: up to 4 per mode, deduplicate by stop ID
-  const seen = new Set();
-  const result = [];
-  for (const mode of ['train', 'tram', 'bus', 'vline']) {
-    for (const s of byMode[mode]) {
-      if (!seen.has(s.id)) { seen.add(s.id); result.push(s); }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── RAPTOR — Round-Based Public Transit Routing ──────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Route patterns: group trips by their ordered stop sequence.
+// A "pattern" is a unique ordered list of stop IDs that multiple trips share.
+const patterns     = [];         // [{id, stopIds, trips:[{tripId, depMins:[]}], routeId, mode}]
+const stopPatterns = new Map();  // stop_id → [{patIdx, stopPos}]
+let _raptorBuilt   = false;
+
+function buildRaptorIndex() {
+  if (_raptorBuilt) return;
+  const t0 = Date.now();
+
+  // Group trips by their ordered stop sequence → pattern key
+  const patternMap = new Map();
+  for (const [tripId, seq] of tripStops) {
+    if (!seq || seq.length < 2) continue;
+    const trip = trips.get(tripId);
+    if (!trip) continue;
+
+    const stopIds = seq.map(s => s.stopId);
+    const key = stopIds.join(',');
+    const depMins = seq.map(s => depToMins(s.dep));
+    if (depMins.every(d => d === null)) continue;
+
+    if (!patternMap.has(key)) {
+      patternMap.set(key, { stopIds, trips: [], routeId: trip.routeId, mode: trip.mode });
     }
+    patternMap.get(key).trips.push({ tripId, depMins });
   }
-  return result;
+
+  // Convert to array, sort trips within each pattern by first departure
+  let patIdx = 0;
+  for (const pat of patternMap.values()) {
+    pat.trips.sort((a, b) => {
+      const aFirst = a.depMins.find(d => d !== null) || 0;
+      const bFirst = b.depMins.find(d => d !== null) || 0;
+      return aFirst - bFirst;
+    });
+    pat.id = patIdx;
+    patterns.push(pat);
+    for (let pos = 0; pos < pat.stopIds.length; pos++) {
+      const sid = pat.stopIds[pos];
+      if (!stopPatterns.has(sid)) stopPatterns.set(sid, []);
+      stopPatterns.get(sid).push({ patIdx, stopPos: pos });
+    }
+    patIdx++;
+  }
+
+  _raptorBuilt = true;
+  console.log(`  ✓ RAPTOR index: ${patterns.length} patterns from ${tripStops.size} trips — ${Date.now()-t0}ms`);
 }
 
-// ── Journey planner ───────────────────────────────────────────────────────────
+// Find the earliest trip in a pattern departing from stopPos at or after minDepMins
+function earliestTrip(pat, stopPos, minDepMins) {
+  const trps = pat.trips;
+  let lo = 0, hi = trps.length - 1, best = null;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const dep = trps[mid].depMins[stopPos];
+    if (dep !== null && dep >= minDepMins) {
+      best = mid;
+      hi = mid - 1;
+    } else {
+      lo = mid + 1;
+    }
+  }
+  return best !== null ? trps[best] : null;
+}
+
+// ── Main RAPTOR query ─────────────────────────────────────────────────────────
 function planJourney(fromLat, fromLng, toLat, toLng, fromName, toName) {
   if (!_loaded) throw new Error('GTFS not loaded');
+  if (!_raptorBuilt) buildRaptorIndex();
 
-  const nowMins   = new Date().getHours() * 60 + new Date().getMinutes();
-  const fromStops = nearestStopsVaried(fromLat, fromLng);
-  const toStops   = nearestStopsVaried(toLat, toLng);
-  const toStopSet = new Set(toStops.map(s => s.id));
-  const toStopMap = new Map(toStops.map(s => [s.id, s]));
+  const MAX_ROUNDS    = 3;
+  const MAX_WALK_KM   = 1.5;
+  const TRANSFER_WALK = 0.4;
+  const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
 
-  const options = [];
+  const fromStopsAll = nearestStops(fromLat, fromLng, 30, MAX_WALK_KM);
+  const toStopsAll   = nearestStops(toLat, toLng, 30, MAX_WALK_KM);
+  if (!fromStopsAll.length || !toStopsAll.length) return [];
 
-  // ── Direct journeys ───────────────────────────────────────────────────────
-  for (const fromStop of fromStops) {
-    if (options.length >= 6) break;
-    const tripSet = stopTrips.get(fromStop.id);
-    if (!tripSet) continue;
+  const toStopSet = new Set(toStopsAll.map(s => s.id));
 
-    let checked = 0;
-    for (const tripId of tripSet) {
-      if (++checked > 150) break; // cap per stop to stay fast
-      const seq     = tripStops.get(tripId);
-      if (!seq) continue;
-      const fromIdx = seq.findIndex(s => s.stopId === fromStop.id);
-      if (fromIdx < 0) continue;
+  // RAPTOR state
+  const tau     = Array.from({length: MAX_ROUNDS + 1}, () => new Map());
+  const tauBest = new Map();
+  const parent  = new Map();
 
-      for (let i = fromIdx + 1; i < seq.length; i++) {
-        if (!toStopSet.has(seq[i].stopId)) continue;
-
-        const toStop      = toStopMap.get(seq[i].stopId);
-        const trip        = trips.get(tripId);
-        const route       = trip ? routes.get(trip.routeId) : null;
-        const mode        = trip?.mode || fromStop.mode;
-        const stopCount   = i - fromIdx;
-        const depMins     = depToMins(seq[fromIdx].dep);
-        const arrMins     = depToMins(seq[i].dep);
-        // Use real GTFS scheduled times when available, else estimate
-        const transitMin  = (depMins !== null && arrMins !== null && arrMins > depMins)
-          ? arrMins - depMins
-          : Math.round(stopCount * (mode === 'train' ? 2 : 1.5));
-        // Prefer trips departing soon; treat past trips as departing now
-        // (GTFS has all-day schedules — we can't distinguish today vs other days)
-        const minsUntilDep = depMins !== null ? Math.max(0, depMins - nowMins) : 0;
-        const wTo         = walkMins(fromStop.distKm);
-        const wFrom       = walkMins(toStop.distKm);
-        const total       = wTo + minsUntilDep + transitMin + wFrom;
-
-        // Use cached shape geometry if available, otherwise fall back to stop-sequence dots
-        let routePath = seq.slice(fromIdx, i + 1)
-          .map(s => stops.get(s.stopId)).filter(Boolean)
-          .map(s => [+(s.lat.toFixed(5)), +(s.lng.toFixed(5))]);
-        if (trip?.shapeId) {
-          const shape = loadShape(trip.shapeId, mode); // cache hit for train/tram
-          if (shape && shape.length > 1) {
-            const clipped = clipShape(shape, fromStop, toStop);
-            if (clipped && clipped.length > 1) routePath = clipped;
-          }
-        }
-
-        options.push({
-          score: total, duration: total, transfers: 0,
-          depart: minsToTime(nowMins + wTo + minsUntilDep),
-          legs: [
-            { type: 'walk', from: fromName || 'Your location', to: fromStop.name, duration: wTo,
-              fromLat, fromLng, toLat: fromStop.lat, toLng: fromStop.lng },
-            { type: mode,
-              line:  route ? (route.shortName || route.longName) : '',
-              color: MODE_COLOR[mode] || '#5b8dee',
-              from: fromStop.name, to: toStop.name,
-              duration: transitMin, stopCount,
-              depart: minsToTime(nowMins + wTo + minsUntilDep),
-              minsUntilDep, delay: 0, routePath, run_ref: tripId },
-            { type: 'walk', from: toStop.name, to: toName || 'Destination', duration: wFrom,
-              fromLat: toStop.lat, fromLng: toStop.lng, toLat, toLng },
-          ],
-        });
-        break;
-      }
-    }
+  // Initialize: walk to origin stops
+  const marked = new Set();
+  for (const s of fromStopsAll) {
+    const arrTime = nowMins + walkMins(s.distKm);
+    tau[0].set(s.id, arrTime);
+    tauBest.set(s.id, arrTime);
+    parent.set(s.id + ':0', { round: 0, type: 'origin', stopId: s.id, walkKm: s.distKm });
+    marked.add(s.id);
   }
 
-  // ── Transfer journeys (one change) ────────────────────────────────────────
-  // Uses proximity-based transfers: any stop within 400m is a valid transfer point,
-  // not just those listed in the sparse transfers.txt.
-  if (options.length < 4) {
-    outer:
-    for (const fromStop of fromStops.slice(0, 5)) {
-      const tripSet = stopTrips.get(fromStop.id);
-      if (!tripSet) continue;
+  // RAPTOR rounds
+  for (let k = 1; k <= MAX_ROUNDS; k++) {
+    const newMarked = new Set();
+    const scanned = new Set();
 
-      let checked = 0;
-      for (const tripId of tripSet) {
-        if (++checked > 80) break;
-        const seq     = tripStops.get(tripId);
-        if (!seq) continue;
-        const fromIdx = seq.findIndex(s => s.stopId === fromStop.id);
-        if (fromIdx < 0) continue;
+    // Scan routes from marked stops
+    for (const sid of marked) {
+      const pats = stopPatterns.get(sid);
+      if (!pats) continue;
+      for (const { patIdx, stopPos } of pats) {
+        if (scanned.has(patIdx)) continue;
+        scanned.add(patIdx);
 
-        for (let i = fromIdx + 1; i < seq.length; i++) {
-          const xferStopId = seq[i].stopId;
-          const xferStop   = stops.get(xferStopId);
-          if (!xferStop) continue;
+        const pat = patterns[patIdx];
+        // Find the earliest boarding point on this pattern from any marked stop
+        let bestBoardPos = -1, bestBoardTime = Infinity, bestBoardSid = null;
+        for (let p = 0; p < pat.stopIds.length; p++) {
+          const psid = pat.stopIds[p];
+          const arr = tau[k-1].get(psid);
+          if (arr !== undefined && arr < bestBoardTime) {
+            bestBoardTime = arr;
+            bestBoardPos = p;
+            bestBoardSid = psid;
+          }
+        }
+        if (bestBoardPos < 0) continue;
 
-          // Collect all candidate transfer stops: the stop itself + proximity neighbours
-          const xferCandidates = [
-            ...(transfers.get(xferStopId) || []).map(t => t.toStopId),
-            ..._nearbyStopIds(xferStopId, 0.4),
-          ];
-          if (!xferCandidates.length) continue;
+        const trip = earliestTrip(pat, bestBoardPos, bestBoardTime);
+        if (!trip) continue;
 
-          for (const toStopId2 of xferCandidates) {
-            if (toStopId2 === xferStopId) continue;
-            const xferTrips = stopTrips.get(toStopId2);
-            if (!xferTrips) continue;
+        // Ride the trip forward
+        for (let pos = bestBoardPos + 1; pos < pat.stopIds.length; pos++) {
+          const arrMin = trip.depMins[pos];
+          if (arrMin === null) continue;
+          const destSid = pat.stopIds[pos];
+          const prevBest = tauBest.get(destSid) ?? Infinity;
+          if (arrMin < prevBest) {
+            tau[k].set(destSid, arrMin);
+            tauBest.set(destSid, arrMin);
+            newMarked.add(destSid);
+            parent.set(destSid + ':' + k, {
+              round: k, type: 'transit', patIdx, tripId: trip.tripId,
+              boardStopId: bestBoardSid, boardPos: bestBoardPos, alightPos: pos,
+              depMin: trip.depMins[bestBoardPos], arrMin,
+            });
+          }
+        }
+      }
+    }
 
-            let checked2 = 0;
-            for (const tripId2 of xferTrips) {
-              if (++checked2 > 60) break;
-              if (tripId2 === tripId) continue;
-              const seq2    = tripStops.get(tripId2);
-              if (!seq2) continue;
-              const xferIdx = seq2.findIndex(s => s.stopId === toStopId2);
-              if (xferIdx < 0) continue;
+    // Transfers: walk to nearby stops
+    for (const sid of newMarked) {
+      const arrTime = tau[k].get(sid);
+      if (arrTime === undefined) continue;
+      const nearby = _nearbyStopIds(sid, TRANSFER_WALK);
+      for (const nid of nearby) {
+        const ns = stops.get(nid);
+        const os = stops.get(sid);
+        if (!ns || !os) continue;
+        const wk = haversineKm(os.lat, os.lng, ns.lat, ns.lng);
+        const newArr = arrTime + walkMins(wk);
+        const prevBest = tauBest.get(nid) ?? Infinity;
+        if (newArr < prevBest) {
+          tau[k].set(nid, newArr);
+          tauBest.set(nid, newArr);
+          newMarked.add(nid);
+          parent.set(nid + ':' + k + ':xfer', {
+            round: k, type: 'transfer', fromStopId: sid, toStopId: nid, walkKm: wk,
+          });
+        }
+      }
+    }
 
-              for (let j = xferIdx + 1; j < seq2.length; j++) {
-                if (!toStopSet.has(seq2[j].stopId)) continue;
+    marked.clear();
+    for (const s of newMarked) marked.add(s);
+    if (marked.size === 0) break;
+  }
 
-                const boardStop2 = stops.get(toStopId2);
-                const toStop     = toStopMap.get(seq2[j].stopId);
-                const trip1      = trips.get(tripId);
-                const trip2      = trips.get(tripId2);
-                const route1     = trip1 ? routes.get(trip1.routeId) : null;
-                const route2     = trip2 ? routes.get(trip2.routeId) : null;
-                const mode1      = trip1?.mode || fromStop.mode;
-                const mode2      = trip2?.mode || 'bus';
-                const dep1From   = depToMins(seq[fromIdx].dep);
-                const dep1To     = depToMins(seq[i].dep);
-                const dep2From   = depToMins(seq2[xferIdx].dep);
-                const dep2To     = depToMins(seq2[j].dep);
-                const transit1   = (dep1From !== null && dep1To !== null && dep1To > dep1From)
-                  ? dep1To - dep1From
-                  : Math.round((i - fromIdx) * (mode1 === 'train' ? 2 : 1.5));
-                const transit2   = (dep2From !== null && dep2To !== null && dep2To > dep2From)
-                  ? dep2To - dep2From
-                  : Math.round((j - xferIdx) * (mode2 === 'train' ? 2 : 1.5));
-                const xferWalkKm = haversineKm(xferStop.lat, xferStop.lng, boardStop2.lat, boardStop2.lng);
-                const xferMins   = Math.max(2, walkMins(xferWalkKm));
-                const wait1      = dep1From !== null ? Math.max(0, dep1From - nowMins) : 0;
-                const wTo        = walkMins(fromStop.distKm);
-                const wFrom      = walkMins(toStop.distKm);
-                const total      = wTo + wait1 + transit1 + xferMins + transit2 + wFrom;
+  // ── Extract journeys ────────────────────────────────────────────────────────
+  const results = [];
+  for (const toStop of toStopsAll) {
+    for (let k = 1; k <= MAX_ROUNDS; k++) {
+      const arr = tau[k]?.get(toStop.id);
+      if (arr === undefined) continue;
 
-                let path1 = seq.slice(fromIdx, i+1).map(s=>stops.get(s.stopId)).filter(Boolean).map(s=>[+(s.lat.toFixed(5)),+(s.lng.toFixed(5))]);
-                if (trip1?.shapeId) { const sh = loadShape(trip1.shapeId, mode1); if (sh?.length>1) { const c=clipShape(sh,fromStop,xferStop); if(c?.length>1) path1=c; } }
-                let path2 = seq2.slice(xferIdx, j+1).map(s=>stops.get(s.stopId)).filter(Boolean).map(s=>[+(s.lat.toFixed(5)),+(s.lng.toFixed(5))]);
-                if (trip2?.shapeId) { const sh = loadShape(trip2.shapeId, mode2); if (sh?.length>1) { const c=clipShape(sh,boardStop2,toStop); if(c?.length>1) path2=c; } }
+      const legs = [];
+      let curStopId = toStop.id;
+      let curRound  = k;
 
-                options.push({
-                  score: total, duration: total, transfers: 1,
-                  depart: minsToTime(nowMins + wTo + wait1),
-                  legs: [
-                    { type: 'walk', from: fromName || 'Your location', to: fromStop.name, duration: wTo,
-                      fromLat, fromLng, toLat: fromStop.lat, toLng: fromStop.lng },
-                    { type: mode1, line: route1 ? (route1.shortName||route1.longName) : '',
-                      color: MODE_COLOR[mode1]||'#5b8dee', from: fromStop.name, to: xferStop.name,
-                      duration: transit1, stopCount: i - fromIdx, depart: minsToTime(nowMins+wTo+wait1),
-                      minsUntilDep: wait1, delay: 0, routePath: path1, run_ref: tripId },
-                    { type: 'walk', from: xferStop.name, to: boardStop2.name, duration: xferMins,
-                      fromLat: xferStop.lat, fromLng: xferStop.lng, toLat: boardStop2.lat, toLng: boardStop2.lng },
-                    { type: mode2, line: route2 ? (route2.shortName||route2.longName) : '',
-                      color: MODE_COLOR[mode2]||'#5b8dee', from: boardStop2.name, to: toStop.name,
-                      duration: transit2, stopCount: j - xferIdx, depart: minsToTime(nowMins+wTo+wait1+transit1+xferMins),
-                      minsUntilDep: 0, delay: 0, routePath: path2, run_ref: tripId2 },
-                    { type: 'walk', from: toStop.name, to: toName||'Destination', duration: wFrom,
-                      fromLat: toStop.lat, fromLng: toStop.lng, toLat, toLng },
-                  ],
-                });
-                if (options.length >= 5) break outer;
-                break;
-              }
+      // Final walk to destination
+      legs.unshift({
+        type: 'walk', from: toStop.name, to: toName || 'Destination',
+        duration: walkMins(toStop.distKm),
+        fromLat: toStop.lat, fromLng: toStop.lng, toLat, toLng,
+      });
+
+      let safety = 20;
+      while (curRound > 0 && --safety > 0) {
+        // Check for transfer at this stop+round
+        const xferKey = curStopId + ':' + curRound + ':xfer';
+        const xp = parent.get(xferKey);
+        if (xp && xp.type === 'transfer') {
+          const fromS = stops.get(xp.fromStopId);
+          const toS   = stops.get(xp.toStopId);
+          if (fromS && toS) {
+            legs.unshift({
+              type: 'walk', from: fromS.name, to: toS.name,
+              duration: walkMins(xp.walkKm),
+              fromLat: fromS.lat, fromLng: fromS.lng, toLat: toS.lat, toLng: toS.lng,
+            });
+          }
+          curStopId = xp.fromStopId;
+          continue;
+        }
+
+        // Check for transit leg
+        const key = curStopId + ':' + curRound;
+        const p = parent.get(key);
+        if (!p) break;
+
+        if (p.type === 'transit') {
+          const pat   = patterns[p.patIdx];
+          const trip  = trips.get(p.tripId);
+          const route = trip ? routes.get(trip.routeId) : null;
+          const mode  = pat.mode || trip?.mode || 'bus';
+          const boardStop  = stops.get(p.boardStopId);
+          const alightStop = stops.get(pat.stopIds[p.alightPos]);
+          const stopCount  = p.alightPos - p.boardPos;
+
+          let routePath = pat.stopIds.slice(p.boardPos, p.alightPos + 1)
+            .map(sid => stops.get(sid)).filter(Boolean)
+            .map(s => [+(s.lat.toFixed(5)), +(s.lng.toFixed(5))]);
+          if (trip?.shapeId && boardStop && alightStop) {
+            const shape = loadShape(trip.shapeId, mode);
+            if (shape && shape.length > 1) {
+              const clipped = clipShape(shape, boardStop, alightStop);
+              if (clipped && clipped.length > 1) routePath = clipped;
             }
           }
+
+          legs.unshift({
+            type: mode,
+            line: route ? (route.shortName || route.longName) : '',
+            color: route?.color || MODE_COLOR[mode] || '#5b8dee',
+            from: boardStop?.name || '?', to: alightStop?.name || '?',
+            duration: (p.arrMin != null && p.depMin != null) ? p.arrMin - p.depMin : stopCount * 2,
+            stopCount,
+            depart: minsToTime(p.depMin ?? nowMins),
+            minsUntilDep: p.depMin != null ? Math.max(0, p.depMin - nowMins) : 0,
+            delay: 0, routePath, run_ref: p.tripId,
+          });
+
+          curStopId = p.boardStopId;
+          curRound--;
+        } else if (p.type === 'origin') {
+          const s = stops.get(p.stopId);
+          legs.unshift({
+            type: 'walk', from: fromName || 'Your location', to: s?.name || '?',
+            duration: walkMins(p.walkKm),
+            fromLat, fromLng, toLat: s?.lat, toLng: s?.lng,
+          });
+          break;
+        } else {
+          break;
         }
       }
+
+      const totalMin = legs.reduce((s, l) => s + (l.duration || 0), 0);
+      const transfers = legs.filter(l => l.type !== 'walk').length - 1;
+      const firstTransit = legs.find(l => l.type !== 'walk');
+
+      results.push({
+        score: totalMin + Math.max(0, transfers) * 5,
+        duration: totalMin,
+        transfers: Math.max(0, transfers),
+        depart: firstTransit?.depart || minsToTime(nowMins),
+        legs,
+      });
     }
   }
 
-  options.sort((a, b) => a.score - b.score);
-
-  // Deduplicate: keep only the best option per unique route signature
+  // Dedup and variety
+  results.sort((a, b) => a.score - b.score);
   const seen = new Set();
   const deduped = [];
-  for (const opt of options) {
-    const sig = opt.legs
-      .filter(l => l.type !== 'walk')
-      .map(l => `${l.type}:${l.line}`)
-      .join('|');
+  for (const opt of results) {
+    const sig = opt.legs.filter(l => l.type !== 'walk').map(l => `${l.type}:${l.line}`).join('|');
     if (seen.has(sig)) continue;
     seen.add(sig);
     deduped.push(opt);
   }
 
-  // Ensure mode variety: prefer train > tram > bus so buses don't crowd out all slots.
-  // Pick best of each mode first, then fill remaining slots with whatever's fastest.
   const modeOrder = ['train', 'vline', 'tram', 'bus'];
   const getPrimaryMode = opt => opt.legs.find(l => l.type !== 'walk')?.type || 'bus';
   const final = [];
@@ -645,4 +716,4 @@ function planJourney(fromLat, fromLng, toLat, toLng, fromName, toName) {
   return final;
 }
 
-module.exports = { load, isLoaded, nearestStops, planJourney, _debug: { stops, routes, trips, tripStops, stopTrips, transfers, shapeCache } };
+module.exports = { load, isLoaded, nearestStops, planJourney, buildRaptorIndex, _debug: { stops, routes, trips, tripStops, stopTrips, transfers, shapeCache } };
