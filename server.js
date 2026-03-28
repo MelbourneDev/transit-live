@@ -11,16 +11,28 @@ const jwt        = require('jsonwebtoken');
 const gtfs       = require('./gtfs');
 const walkRouter = require('./walkrouter');
 
-// Address search index — loaded from addresses.json (built by build-address-index.js)
-let addressIndex = []; // [[display, lat, lng], ...]
-try {
-  const addrPath = path.join(__dirname, 'addresses.json');
-  if (fs.existsSync(addrPath)) {
-    addressIndex = JSON.parse(fs.readFileSync(addrPath, 'utf8'));
-    console.log(`✓ Address index: ${addressIndex.length} addresses loaded`);
+// Address search — file-based streaming (no RAM overhead)
+const ADDR_TSV = path.join(__dirname, 'addresses.tsv');
+const _addrFileExists = fs.existsSync(ADDR_TSV);
+if (_addrFileExists) console.log('✓ Address file: addresses.tsv ready (streaming search, no RAM cost)');
+
+function searchAddresses(query, maxResults = 8) {
+  if (!_addrFileExists) return [];
+  const qParts = query.toLowerCase().split(/[\s,]+/).filter(Boolean);
+  if (!qParts.length) return [];
+  const results = [];
+  const data = fs.readFileSync(ADDR_TSV, 'utf8');
+  const lines = data.split('\n');
+  for (const line of lines) {
+    if (results.length >= maxResults) break;
+    if (!line) continue;
+    const low = line.toLowerCase();
+    if (qParts.every(p => low.includes(p))) {
+      const [display, lat, lng] = line.split('\t');
+      results.push({ name: display, lat: parseFloat(lat), lng: parseFloat(lng), type: 'address' });
+    }
   }
-} catch (e) {
-  console.warn('⚠ Could not load addresses.json:', e.message);
+  return results;
 }
 
 const app     = express();
@@ -664,41 +676,14 @@ app.get('/api/journey/autocomplete', async (req, res) => {
     }
   }
 
-  // 2. Search local address index (665k Melbourne addresses, instant)
-  if (results.length < 8 && addressIndex.length > 0) {
-    const qParts = q.split(/[\s,]+/).filter(Boolean);
-
-    // Binary search to jump near the query in sorted address list
-    let lo = 0, hi = addressIndex.length - 1;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (addressIndex[mid][0].toLowerCase() < q) lo = mid + 1; else hi = mid;
-    }
-
-    // Scan forward from the binary search position
-    for (let i = lo; i < Math.min(lo + 2000, addressIndex.length); i++) {
-      if (results.length >= 8) break;
-      const [display, lat, lng] = addressIndex[i];
-      const low = display.toLowerCase();
-      if (qParts.every(p => low.includes(p))) {
-        if (seen.has(low)) continue;
-        seen.add(low);
-        results.push({ name: display, lat, lng, type: 'address' });
-      }
-    }
-
-    // Also scan backwards in case binary search landed past some matches
-    if (results.length < 8) {
-      for (let i = Math.max(0, lo - 1000); i < lo; i++) {
-        if (results.length >= 8) break;
-        const [display, lat, lng] = addressIndex[i];
-        const low = display.toLowerCase();
-        if (qParts.every(p => low.includes(p))) {
-          if (seen.has(low)) continue;
-          seen.add(low);
-          results.push({ name: display, lat, lng, type: 'address' });
-        }
-      }
+  // 2. Search local address file (665k Melbourne addresses, streaming — no RAM)
+  if (results.length < 8) {
+    const addrResults = searchAddresses(q, 8 - results.length);
+    for (const addr of addrResults) {
+      const key = addr.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      results.push(addr);
     }
   }
 
