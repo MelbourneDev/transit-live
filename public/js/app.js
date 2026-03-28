@@ -1114,13 +1114,13 @@ async function init(){
   fetchInspectors();
   setInterval(fetchInspectors, 60000);
 
-  // Map setup — show map immediately, resolve GPS in background
+  // Hide loader immediately — don't wait for map tiles
+  hideLoader();
+
+  // Map setup — resolve GPS in background
   try {
     await mapReady();
     buildRouteSources(); // fire-and-forget, don't block
-
-    // Hide loader immediately — map is visible
-    hideLoader();
 
     // Resolve GPS in background — pan when ready
     locateUser().then(loc => {
