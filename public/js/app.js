@@ -1114,26 +1114,29 @@ async function init(){
   fetchInspectors();
   setInterval(fetchInspectors, 60000);
 
-  // Map-specific setup — waits for load but has a 5s timeout so it never hangs
+  // Map setup — show map immediately, resolve GPS in background
   try {
     await mapReady();
-    await buildRouteSources();
+    buildRouteSources(); // fire-and-forget, don't block
 
-    const loc = await locateUser();
-    if(loc){
-      userLoc = loc;
-      document.getElementById('ld-title').textContent = 'Found you! 🎉';
-      document.getElementById('ld-sub').textContent = 'Loading transit data...';
-      await new Promise(r=>setTimeout(r,600));
-      map.jumpTo({center:[loc.lng,loc.lat], zoom:14});
-      try { placeUserPin(loc.lat,loc.lng); } catch(e){ console.warn('Pin error:',e); }
-    } else {
-      document.getElementById('sb-nearest').textContent = '📍 Enable location for nearby info';
-    }
+    // Hide loader immediately — map is visible
+    hideLoader();
+
+    // Resolve GPS in background — pan when ready
+    locateUser().then(loc => {
+      if(loc){
+        userLoc = loc;
+        map.flyTo({center:[loc.lng,loc.lat], zoom:14, duration:1200});
+        try { placeUserPin(loc.lat,loc.lng); } catch(e){}
+        // Populate "from" field
+        const fromInput = document.getElementById('from-input');
+        if(fromInput && !fromInput.value) fromInput.value = 'Your location';
+      } else {
+        document.getElementById('sb-nearest').textContent = '📍 Enable location for nearby info';
+      }
+    });
     try { startLocationWatch(); } catch(e){ console.warn('Watch error:',e); }
   } catch(e){ console.error('Init map error:',e); }
-
-  setTimeout(hideLoader, 1500);
 
   // Mode badge — starts as LIVE (data loads when user picks a filter)
   document.getElementById('mode-badge').className = 'mode-badge live';
@@ -1476,12 +1479,17 @@ function updateJourneyPolyline(){
   for(const leg of legs){
     const isWalk = leg.type === 'walk';
     if(isWalk){
-      // Use Valhalla walking path if server returned one, else straight line
+      if(leg.fromLat == null || leg.toLat == null) continue;
+      const same = Math.abs(leg.fromLat - leg.toLat) < 1e-5 && Math.abs(leg.fromLng - leg.toLng) < 1e-5;
+      if(same) continue;
+      // Skip drawing micro walks on map (<150m) — just show in sidebar
+      const walkDistM = haversine(leg.fromLat, leg.fromLng, leg.toLat, leg.toLng) * 1000;
+      if(walkDistM < 150) continue;
+      // Use walk path if available, else straight line
       if(leg.walkPath && leg.walkPath.length >= 2){
         addSegment(leg.walkPath, LEG_COLORS.walk, true);
-      } else if(leg.fromLat != null && leg.toLat != null){
-        const same = Math.abs(leg.fromLat - leg.toLat) < 1e-5 && Math.abs(leg.fromLng - leg.toLng) < 1e-5;
-        if(!same) addSegment([[leg.fromLng, leg.fromLat],[leg.toLng, leg.toLat]], LEG_COLORS.walk, true);
+      } else {
+        addSegment([[leg.fromLng, leg.fromLat],[leg.toLng, leg.toLat]], LEG_COLORS.walk, true);
       }
     } else {
       // Transit leg — routePath is [[lat,lng],...] from GTFS

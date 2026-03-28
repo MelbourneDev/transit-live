@@ -148,13 +148,12 @@ function findPath(fromLat, fromLng, toLat, toLng) {
     // Same nearest node — try to find a different end node further out
     const altEnd = nearestNodeExcluding(toLat, toLng, startNode, 800);
     if (altEnd) {
-      // Route through the alt node
       const n = nodes.get(startNode);
       const n2 = nodes.get(altEnd);
-      return [[fromLng, fromLat], [n.lng, n.lat], [n2.lng, n2.lat], [toLng, toLat]];
+      return [[n.lng, n.lat], [n2.lng, n2.lat]];
     }
     const n = nodes.get(startNode);
-    return [[fromLng, fromLat], [n.lng, n.lat], [toLng, toLat]];
+    return [[n.lng, n.lat]];
   }
 
   const endN = nodes.get(endNode);
@@ -191,15 +190,21 @@ function findPath(fromLat, fromLng, toLat, toLng) {
     inOpen.delete(current);
 
     if (current === endNode) {
-      // Reconstruct path
-      const path = [[toLng, toLat]];
+      // Reconstruct path — snap to road nodes, don't use raw GPS coords
+      // This prevents lines from cutting through buildings
+      const path = [];
       let node = endNode;
       while (cameFrom.has(node)) {
         const n = nodes.get(node);
         if (n) path.unshift([n.lng, n.lat]);
         node = cameFrom.get(node);
       }
-      path.unshift([fromLng, fromLat]);
+      // Add start node
+      const startN = nodes.get(startNode);
+      if (startN) path.unshift([startN.lng, startN.lat]);
+      // Add end node
+      const endNd = nodes.get(endNode);
+      if (endNd) path.push([endNd.lng, endNd.lat]);
       return path;
     }
 
