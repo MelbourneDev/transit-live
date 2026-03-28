@@ -458,7 +458,15 @@ function buildRaptorIndex() {
   }
 
   _raptorBuilt = true;
-  console.log(`  ✓ RAPTOR index: ${patterns.length} patterns from ${tripStops.size} trips — ${Date.now()-t0}ms`);
+  const tripCount = tripStops.size;
+  // Free tripStops — no longer needed after RAPTOR index is built (~600MB saved)
+  tripStops.clear();
+  // Slim down stopTrips to just a Set of stop IDs that have trips (saves ~200MB)
+  const stopsWithTrips = new Set();
+  for (const sid of stopTrips.keys()) stopsWithTrips.add(sid);
+  stopTrips.clear();
+  for (const sid of stopsWithTrips) stopTrips.set(sid, true);
+  console.log(`  ✓ RAPTOR index: ${patterns.length} patterns from ${tripCount} trips — ${Date.now()-t0}ms (freed trip data)`);
 }
 
 // Find the earliest trip in a pattern departing from stopPos at or after minDepMins
