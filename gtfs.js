@@ -643,8 +643,10 @@ function planJourney(fromLat, fromLng, toLat, toLng, fromName, toName) {
             let routePath = pat.stopIds.slice(p.boardPos, p.alightPos + 1)
               .map(sid => stops.get(sid)).filter(Boolean)
               .map(s => [+(s.lat.toFixed(5)), +(s.lng.toFixed(5))]);
-            if (trip?.shapeId && boardStop && alightStop) {
-              const shape = loadShape(trip.shapeId, mode);
+            // Use cached shapes for train/tram (preloaded). Bus shapes are too large
+            // to preload so we use stop-sequence dots instead (fast + adequate).
+            if (trip?.shapeId && boardStop && alightStop && (mode === 'train' || mode === 'tram' || mode === 'vline')) {
+              const shape = shapeCache.get(trip.shapeId);
               if (shape && shape.length > 1) {
                 const clipped = clipShape(shape, boardStop, alightStop);
                 if (clipped && clipped.length > 1) routePath = clipped;

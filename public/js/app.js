@@ -1122,13 +1122,23 @@ async function init(){
     await mapReady();
     buildRouteSources(); // fire-and-forget, don't block
 
-    // Resolve GPS in background — pan when ready
+    // Use cached GPS for instant startup, then update with fresh position
+    try {
+      const cached = JSON.parse(localStorage.getItem('tl-last-loc'));
+      if(cached && cached.lat && cached.lng){
+        userLoc = cached;
+        map.jumpTo({center:[cached.lng,cached.lat], zoom:14});
+        try { placeUserPin(cached.lat,cached.lng); } catch(e){}
+      }
+    } catch(e){}
+
+    // Resolve fresh GPS in background
     locateUser().then(loc => {
       if(loc){
         userLoc = loc;
-        map.flyTo({center:[loc.lng,loc.lat], zoom:14, duration:1200});
+        localStorage.setItem('tl-last-loc', JSON.stringify(loc));
+        map.flyTo({center:[loc.lng,loc.lat], zoom:14, duration:800});
         try { placeUserPin(loc.lat,loc.lng); } catch(e){}
-        // Populate "from" field
         const fromInput = document.getElementById('from-input');
         if(fromInput && !fromInput.value) fromInput.value = 'Your location';
       } else {
@@ -1178,7 +1188,8 @@ function initSearch(){
       const main = parts[0].trim();
       const sub  = parts.slice(1,3).map(s=>s.trim()).filter(Boolean).join(', ');
       const ico  = typeIco[l.type]||'📍';
-      return `<div class="addr-suggestion" data-i="${i}" data-lat="${l.lat}" data-lng="${l.lng}" data-name="${escHtml(main)}">
+      const fullDisplay = sub ? `${main}, ${sub}` : main;
+      return `<div class="addr-suggestion" data-i="${i}" data-lat="${l.lat}" data-lng="${l.lng}" data-name="${escHtml(fullDisplay)}">
         <span class="addr-sug-ico">${ico}</span>
         <div>
           <div class="addr-result-main">${escHtml(main)}</div>

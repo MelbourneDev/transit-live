@@ -667,37 +667,35 @@ app.get('/api/journey/autocomplete', async (req, res) => {
   // 2. Search local address index (665k Melbourne addresses, instant)
   if (results.length < 8 && addressIndex.length > 0) {
     const qParts = q.split(/[\s,]+/).filter(Boolean);
-    let count = 0;
-    for (const [display, lat, lng] of addressIndex) {
-      if (count >= 200) break; // cap scan for speed
-      const low = display.toLowerCase();
-      // All query parts must appear in the address
-      if (qParts.every(p => low.includes(p))) {
-        const key = low.split(',')[0].trim();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        results.push({ name: display, lat, lng, type: 'address' });
-        if (results.length >= 8) break;
-      }
-      count++;
+
+    // Binary search to jump near the query in sorted address list
+    let lo = 0, hi = addressIndex.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (addressIndex[mid][0].toLowerCase() < q) lo = mid + 1; else hi = mid;
     }
-    // If scanning from start didn't find enough, do a binary search to the right section
-    if (results.length < 8 && qParts.length > 0) {
-      // Binary search for first address starting with the first numeric part or street
-      const searchKey = qParts.find(p => /^\d/.test(p)) ? q : qParts[qParts.length - 1];
-      let lo = 0, hi = addressIndex.length - 1;
-      while (lo < hi) {
-        const mid = (lo + hi) >> 1;
-        if (addressIndex[mid][0].toLowerCase() < searchKey) lo = mid + 1; else hi = mid;
+
+    // Scan forward from the binary search position
+    for (let i = lo; i < Math.min(lo + 2000, addressIndex.length); i++) {
+      if (results.length >= 8) break;
+      const [display, lat, lng] = addressIndex[i];
+      const low = display.toLowerCase();
+      if (qParts.every(p => low.includes(p))) {
+        if (seen.has(low)) continue;
+        seen.add(low);
+        results.push({ name: display, lat, lng, type: 'address' });
       }
-      for (let i = lo; i < Math.min(lo + 500, addressIndex.length); i++) {
+    }
+
+    // Also scan backwards in case binary search landed past some matches
+    if (results.length < 8) {
+      for (let i = Math.max(0, lo - 1000); i < lo; i++) {
         if (results.length >= 8) break;
         const [display, lat, lng] = addressIndex[i];
         const low = display.toLowerCase();
         if (qParts.every(p => low.includes(p))) {
-          const key = low.split(',')[0].trim();
-          if (seen.has(key)) continue;
-          seen.add(key);
+          if (seen.has(low)) continue;
+          seen.add(low);
           results.push({ name: display, lat, lng, type: 'address' });
         }
       }
