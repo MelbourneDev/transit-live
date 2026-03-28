@@ -1,0 +1,2363 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-03-28T06:33:58Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+
+{
+  "type": "node",
+  "id": 98159497,
+  "lat": -37.9103266,
+  "lon": 145.1895175,
+  "tags": {
+    "name": "Wheelers Hill",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 203298512,
+  "lat": -37.9248257,
+  "lon": 145.0921745,
+  "tags": {
+    "name": "Oakleigh South",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 214828619,
+  "lat": -37.8056831,
+  "lon": 145.1295748,
+  "tags": {
+    "name": "Box Hill North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 222783175,
+  "lat": -37.7845585,
+  "lon": 144.9728553,
+  "tags": {
+    "name": "Carlton North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 229281728,
+  "lat": -37.7333202,
+  "lon": 144.9182433,
+  "tags": {
+    "name": "Strathmore",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 234510960,
+  "lat": -37.8388322,
+  "lon": 145.1487848,
+  "tags": {
+    "name": "Blackburn South",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 246581746,
+  "lat": -37.7833316,
+  "lon": 144.9837074,
+  "tags": {
+    "name": "Fitzroy North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 253347259,
+  "lat": -37.8593822,
+  "lon": 144.7671404,
+  "tags": {
+    "name": "Laverton",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 277357248,
+  "lat": -37.8271881,
+  "lon": 145.0978326,
+  "tags": {
+    "name": "Surrey Hills",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 301288582,
+  "lat": -37.7181626,
+  "lon": 144.9189712,
+  "tags": {
+    "name": "Oak Park",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 311246647,
+  "lat": -37.7123767,
+  "lon": 145.0074935,
+  "tags": {
+    "name": "Reservoir",
+    "place": "suburb",
+    "population": "51096"
+  }
+},
+{
+  "type": "node",
+  "id": 368949159,
+  "lat": -37.9105942,
+  "lon": 145.0386300,
+  "tags": {
+    "name": "McKinnon",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 369117970,
+  "lat": -37.9185101,
+  "lon": 145.0409246,
+  "tags": {
+    "name": "Bentleigh",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 748716955,
+  "lat": -37.7155690,
+  "lon": 145.0355601,
+  "tags": {
+    "name": "Kingsbury",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 805061317,
+  "lat": -37.7063703,
+  "lon": 145.1216479,
+  "tags": {
+    "name": "Briar Hill",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 821828362,
+  "lat": -37.8033152,
+  "lon": 145.1107226,
+  "tags": {
+    "name": "Mont Albert North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 827579263,
+  "lat": -37.8814419,
+  "lon": 144.7845482,
+  "tags": {
+    "name": "Altona Meadows",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1059211028,
+  "lat": -37.9261741,
+  "lon": 145.1723107,
+  "tags": {
+    "name": "Mulgrave",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1102786157,
+  "lat": -37.9039946,
+  "lon": 145.0432907,
+  "tags": {
+    "name": "Ormond",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1104279359,
+  "lat": -37.8362738,
+  "lon": 145.1690911,
+  "tags": {
+    "name": "Forest Hill",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1105717734,
+  "lat": -37.7614537,
+  "lon": 144.8621410,
+  "tags": {
+    "name": "Avondale Heights",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1105717735,
+  "lat": -37.7695144,
+  "lon": 144.8902049,
+  "tags": {
+    "name": "Maribyrnong",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1110858013,
+  "lat": -37.6960460,
+  "lon": 145.0849770,
+  "tags": {
+    "name": "Watsonia North",
+    "place": "suburb",
+    "population": "3799"
+  }
+},
+{
+  "type": "node",
+  "id": 1110896508,
+  "lat": -37.7531065,
+  "lon": 145.0384784,
+  "tags": {
+    "name": "Bellfield",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1110913901,
+  "lat": -37.7524788,
+  "lon": 145.0701284,
+  "tags": {
+    "name": "Heidelberg",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1110920607,
+  "lat": -37.7396345,
+  "lon": 145.0696349,
+  "tags": {
+    "name": "Rosanna",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1111073921,
+  "lat": -37.7382431,
+  "lon": 145.0433922,
+  "tags": {
+    "name": "Heidelberg West",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 1111075734,
+  "lat": -37.7451831,
+  "lon": 145.0529194,
+  "tags": {
+    "name": "Heidelberg Heights",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2085444559,
+  "lat": -37.6988474,
+  "lon": 145.1074004,
+  "tags": {
+    "name": "Greensborough",
+    "place": "suburb",
+    "population": "21070",
+    "wikipedia": "en:Greensborough, Victoria"
+  }
+},
+{
+  "type": "node",
+  "id": 2085695582,
+  "lat": -37.7269212,
+  "lon": 144.9004134,
+  "tags": {
+    "name": "Essendon Fields",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2086299830,
+  "lat": -37.7728157,
+  "lon": 145.0009469,
+  "tags": {
+    "name": "Northcote",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2086300964,
+  "lat": -37.7582744,
+  "lon": 145.0051501,
+  "tags": {
+    "name": "Thornbury",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2087140700,
+  "lat": -37.8175423,
+  "lon": 144.9394923,
+  "tags": {
+    "name": "Docklands",
+    "name:zh-Hans": "港区",
+    "name:zh-Hant": "港區",
+    "place": "suburb",
+    "population": "17723",
+    "population:date": "June 30 2023",
+    "wikidata": "Q5287226",
+    "wikipedia": "en:Docklands, Victoria"
+  }
+},
+{
+  "type": "node",
+  "id": 2088402468,
+  "lat": -37.8576088,
+  "lon": 145.0350666,
+  "tags": {
+    "name": "Malvern",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2088403020,
+  "lat": -37.8638261,
+  "lon": 144.9816370,
+  "tags": {
+    "name": "St Kilda",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2089443127,
+  "lat": -37.7189715,
+  "lon": 145.1256231,
+  "tags": {
+    "name": "Montmorency",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2089443899,
+  "lat": -37.7204404,
+  "lon": 145.0698280,
+  "tags": {
+    "name": "Macleod",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2089464955,
+  "lat": -37.7097848,
+  "lon": 145.0832709,
+  "tags": {
+    "name": "Watsonia",
+    "place": "suburb",
+    "population": "5352"
+  }
+},
+{
+  "type": "node",
+  "id": 2089497945,
+  "lat": -37.7845032,
+  "lon": 145.0158191,
+  "tags": {
+    "name": "Fairfield",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2089498198,
+  "lat": -37.7803992,
+  "lon": 145.0308824,
+  "tags": {
+    "name": "Alphington",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2089501541,
+  "lat": -37.7904385,
+  "lon": 144.9975371,
+  "tags": {
+    "name": "Clifton Hill",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2089501763,
+  "lat": -37.8021040,
+  "lon": 144.9881387,
+  "tags": {
+    "name": "Collingwood",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2089501965,
+  "lat": -37.8010382,
+  "lon": 144.9792611,
+  "tags": {
+    "name": "Fitzroy",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2089502095,
+  "lat": -37.8045508,
+  "lon": 144.9988542,
+  "tags": {
+    "name": "Abbotsford",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2089502211,
+  "lat": -37.8124980,
+  "lon": 144.9858851,
+  "tags": {
+    "name": "East Melbourne",
+    "name:fr": "Melbourne-Est",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2089502391,
+  "lat": -37.8203860,
+  "lon": 145.0025144,
+  "tags": {
+    "name": "Richmond",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2089502450,
+  "lat": -37.8290227,
+  "lon": 144.9927735,
+  "tags": {
+    "name": "Cremorne",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2090529953,
+  "lat": -37.8253618,
+  "lon": 144.9640203,
+  "tags": {
+    "name": "Southbank",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2090531063,
+  "lat": -37.8253279,
+  "lon": 144.9493432,
+  "tags": {
+    "name": "South Wharf",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2090532856,
+  "lat": -37.8333613,
+  "lon": 144.9219203,
+  "tags": {
+    "name": "Port Melbourne",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2091499855,
+  "lat": -37.9064862,
+  "lon": 144.7533059,
+  "tags": {
+    "name": "Point Cook",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2091501661,
+  "lat": -37.7987978,
+  "lon": 144.7760510,
+  "tags": {
+    "name": "Derrimut",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2091502275,
+  "lat": -37.7493740,
+  "lon": 144.7530270,
+  "tags": {
+    "name": "Burnside",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2091502446,
+  "lat": -37.7324225,
+  "lon": 144.7555804,
+  "tags": {
+    "name": "Burnside Heights",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2091502500,
+  "lat": -37.7152241,
+  "lon": 144.7533127,
+  "tags": {
+    "name": "Taylors Hill",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2091502832,
+  "lat": -37.7460824,
+  "lon": 144.7685623,
+  "tags": {
+    "name": "Albanvale",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2091503269,
+  "lat": -37.7593157,
+  "lon": 144.7878098,
+  "tags": {
+    "name": "Cairnlea",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2091503577,
+  "lat": -37.7205762,
+  "lon": 144.8047614,
+  "tags": {
+    "name": "Keilor Downs",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2091503656,
+  "lat": -37.7450983,
+  "lon": 144.8049760,
+  "tags": {
+    "name": "St Albans",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2091504373,
+  "lat": -37.7337122,
+  "lon": 144.7719526,
+  "tags": {
+    "name": "Kings Park",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2091505017,
+  "lat": -37.7639467,
+  "lon": 144.8361969,
+  "tags": {
+    "name": "Sunshine North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2141184396,
+  "lat": -37.8121234,
+  "lon": 145.0664377,
+  "tags": {
+    "name": "Deepdene",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2141186264,
+  "lat": -37.8091737,
+  "lon": 145.0833678,
+  "tags": {
+    "name": "Balwyn",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2141188796,
+  "lat": -37.8175479,
+  "lon": 145.1075721,
+  "tags": {
+    "name": "Mont Albert",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2141190011,
+  "lat": -37.7904215,
+  "lon": 145.0527906,
+  "tags": {
+    "name": "Kew East",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2141191909,
+  "lat": -37.8033586,
+  "lon": 145.0333285,
+  "tags": {
+    "name": "Kew",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2141194136,
+  "lat": -37.8313785,
+  "lon": 145.0499797,
+  "tags": {
+    "name": "Hawthorn East",
+    "place": "suburb",
+    "wikidata": "Q5685486"
+  }
+},
+{
+  "type": "node",
+  "id": 2141194465,
+  "lat": -37.8384623,
+  "lon": 145.0740767,
+  "tags": {
+    "name": "Camberwell",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2141197549,
+  "lat": -37.8243448,
+  "lon": 145.0757933,
+  "tags": {
+    "name": "Canterbury",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2141203083,
+  "lat": -37.7871148,
+  "lon": 144.9515533,
+  "tags": {
+    "name": "Parkville",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2141204960,
+  "lat": -37.7807553,
+  "lon": 144.9355030,
+  "tags": {
+    "name": "Travancore",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2141205888,
+  "lat": -37.7769563,
+  "lon": 144.9137235,
+  "tags": {
+    "name": "Ascot Vale",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2141206461,
+  "lat": -37.7867587,
+  "lon": 144.9193668,
+  "tags": {
+    "name": "Flemington",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2141206946,
+  "lat": -37.7943554,
+  "lon": 144.9270487,
+  "tags": {
+    "name": "Kensington",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2142270771,
+  "lat": -37.8296132,
+  "lon": 145.0175294,
+  "tags": {
+    "name": "Burnley",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2142273216,
+  "lat": -37.7818041,
+  "lon": 144.9665675,
+  "tags": {
+    "name": "Princes Hill",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2142277290,
+  "lat": -37.8004228,
+  "lon": 144.9684343,
+  "tags": {
+    "name": "Carlton",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2142279103,
+  "lat": -37.7688802,
+  "lon": 144.9776825,
+  "tags": {
+    "alt_name": "East Brunswick",
+    "name": "Brunswick East",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2142282080,
+  "lat": -37.7664715,
+  "lon": 144.9613103,
+  "tags": {
+    "name": "Brunswick",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2142282651,
+  "lat": -37.7633334,
+  "lon": 144.9425563,
+  "tags": {
+    "name": "Brunswick West",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2142287856,
+  "lat": -37.7981339,
+  "lon": 144.8973450,
+  "tags": {
+    "name": "Footscray",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2142288777,
+  "lat": -37.8005584,
+  "lon": 144.8710808,
+  "tags": {
+    "name": "West Footscray",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2148885557,
+  "lat": -37.8840642,
+  "lon": 145.0263700,
+  "tags": {
+    "name": "Caulfield",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2148888695,
+  "lat": -37.8602151,
+  "lon": 144.8137030,
+  "tags": {
+    "name": "Altona",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2148891677,
+  "lat": -37.8816255,
+  "lon": 145.1681838,
+  "tags": {
+    "name": "Glen Waverley",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2148894326,
+  "lat": -37.7655750,
+  "lon": 144.9212864,
+  "tags": {
+    "name": "Moonee Ponds",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2148895399,
+  "lat": -37.7449752,
+  "lon": 144.9643314,
+  "tags": {
+    "name": "Coburg",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2148896889,
+  "lat": -37.8172638,
+  "lon": 145.1765591,
+  "tags": {
+    "name": "Nunawading",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2148901022,
+  "lat": -37.8215116,
+  "lon": 145.1261267,
+  "tags": {
+    "name": "Box Hill",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2154389626,
+  "lat": -37.8777978,
+  "lon": 144.9952778,
+  "tags": {
+    "name": "Ripponlea",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2154406793,
+  "lat": -37.8858425,
+  "lon": 145.0070152,
+  "tags": {
+    "name": "Elsternwick",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2154407397,
+  "lat": -37.8981194,
+  "lon": 145.0091824,
+  "tags": {
+    "name": "Gardenvale",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2154411577,
+  "lat": -37.8668218,
+  "lon": 145.0021657,
+  "tags": {
+    "name": "St Kilda East",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2154411635,
+  "lat": -37.8702943,
+  "lon": 144.9947414,
+  "tags": {
+    "name": "Balaclava",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2154412285,
+  "lat": -37.8545227,
+  "lon": 144.9921665,
+  "tags": {
+    "name": "Windsor",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2154412351,
+  "lat": -37.8519135,
+  "lon": 145.0005993,
+  "tags": {
+    "name": "Prahran",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2154414077,
+  "lat": -37.8708280,
+  "lon": 145.0218005,
+  "tags": {
+    "name": "Caulfield North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2154414753,
+  "lat": -37.8812760,
+  "lon": 145.0420847,
+  "tags": {
+    "name": "Caulfield East",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2154416801,
+  "lat": -37.8946990,
+  "lon": 145.0249323,
+  "tags": {
+    "name": "Caulfield South",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2154418016,
+  "lat": -37.8923791,
+  "lon": 145.0413689,
+  "tags": {
+    "name": "Glen Huntly",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2207978609,
+  "lat": -37.7985747,
+  "lon": 144.9451741,
+  "tags": {
+    "name": "North Melbourne",
+    "name:fr": "Melbourne-Nord",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2235733358,
+  "lat": -37.7498293,
+  "lon": 144.9109062,
+  "tags": {
+    "name": "Essendon",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2256375529,
+  "lat": -37.8543860,
+  "lon": 145.1878065,
+  "tags": {
+    "name": "Vermont South",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2260849817,
+  "lat": -37.8535935,
+  "lon": 145.1504230,
+  "tags": {
+    "name": "Burwood East",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2260852993,
+  "lat": -37.8495780,
+  "lon": 145.1113915,
+  "tags": {
+    "name": "Burwood",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2272227482,
+  "lat": -37.8511511,
+  "lon": 144.9620399,
+  "tags": {
+    "name": "Middle Park",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2272227680,
+  "lat": -37.8579958,
+  "lon": 144.9712452,
+  "tags": {
+    "name": "St Kilda West",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2272228006,
+  "lat": -37.8334400,
+  "lon": 144.9570533,
+  "tags": {
+    "name": "South Melbourne",
+    "name:fr": "Melbourne-Sud",
+    "old_name": "Emerald Hill",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2274622295,
+  "lat": -37.8416141,
+  "lon": 145.0176215,
+  "tags": {
+    "name": "Toorak",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2274624295,
+  "lat": -37.8377695,
+  "lon": 144.9918537,
+  "tags": {
+    "name": "South Yarra",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578679044,
+  "lat": -37.8160898,
+  "lon": 144.8414748,
+  "tags": {
+    "name": "Brooklyn",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578679373,
+  "lat": -37.8046977,
+  "lon": 144.8529354,
+  "tags": {
+    "name": "Tottenham",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578683688,
+  "lat": -37.7867076,
+  "lon": 144.8548451,
+  "tags": {
+    "name": "Braybrook",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578685777,
+  "lat": -37.8306664,
+  "lon": 144.8713429,
+  "tags": {
+    "name": "South Kingsville",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578687507,
+  "lat": -37.8526453,
+  "lon": 144.8688784,
+  "tags": {
+    "name": "Williamstown North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578889769,
+  "lat": -37.6832769,
+  "lon": 144.9323037,
+  "tags": {
+    "name": "Broadmeadows",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578890230,
+  "lat": -37.6898311,
+  "lon": 144.8944658,
+  "tags": {
+    "name": "Gladstone Park",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578893437,
+  "lat": -37.7046580,
+  "lon": 144.8717732,
+  "tags": {
+    "name": "Tullamarine",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578899072,
+  "lat": -37.6764488,
+  "lon": 144.8365383,
+  "tags": {
+    "name": "Melbourne Airport",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578899097,
+  "lat": -37.6877427,
+  "lon": 144.9111681,
+  "tags": {
+    "name": "Jacana",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578899105,
+  "lat": -37.7028199,
+  "lon": 144.9275403,
+  "tags": {
+    "name": "Glenroy",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578909409,
+  "lat": -37.7027183,
+  "lon": 144.8975976,
+  "tags": {
+    "name": "Gowanbrae",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578910093,
+  "lat": -37.7101582,
+  "lon": 144.9502764,
+  "tags": {
+    "name": "Hadfield",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578926443,
+  "lat": -37.6670148,
+  "lon": 144.8848620,
+  "tags": {
+    "name": "Attwood",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578928764,
+  "lat": -37.6708194,
+  "lon": 144.9354163,
+  "tags": {
+    "name": "Dallas",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578932434,
+  "lat": -37.6641298,
+  "lon": 144.9595830,
+  "tags": {
+    "name": "Campbellfield",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578957525,
+  "lat": -37.7052065,
+  "lon": 144.9696144,
+  "tags": {
+    "name": "Fawkner",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578960589,
+  "lat": -37.6511668,
+  "lon": 144.9185521,
+  "tags": {
+    "name": "Meadow Heights",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578965532,
+  "lat": -37.6567594,
+  "lon": 144.9345853,
+  "tags": {
+    "name": "Coolaroo",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578986258,
+  "lat": -37.6986330,
+  "lon": 144.7863077,
+  "tags": {
+    "name": "Taylors Lakes",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578986276,
+  "lat": -37.6984134,
+  "lon": 144.7998157,
+  "tags": {
+    "name": "Keilor Lodge",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578986395,
+  "lat": -37.6816313,
+  "lon": 144.7930224,
+  "tags": {
+    "name": "Keilor North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578986411,
+  "lat": -37.6762639,
+  "lon": 144.7611396,
+  "tags": {
+    "name": "Calder Park",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578988007,
+  "lat": -37.7340623,
+  "lon": 144.7370017,
+  "tags": {
+    "name": "Caroline Springs",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578988186,
+  "lat": -37.6997223,
+  "lon": 144.7653295,
+  "tags": {
+    "name": "Sydenham",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578988196,
+  "lat": -37.6904862,
+  "lon": 144.7417358,
+  "tags": {
+    "name": "Hillside",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2578988235,
+  "lat": -37.7198138,
+  "lon": 144.7773228,
+  "tags": {
+    "name": "Delahey",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2579252818,
+  "lat": -37.6659556,
+  "lon": 145.1813531,
+  "tags": {
+    "name": "Wattle Glen",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2586286193,
+  "lat": -37.7819337,
+  "lon": 144.8741606,
+  "tags": {
+    "name": "Maidstone",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2586286707,
+  "lat": -37.7893319,
+  "lon": 144.8342699,
+  "tags": {
+    "name": "Sunshine",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2586287914,
+  "lat": -37.7983442,
+  "lon": 144.8110919,
+  "tags": {
+    "name": "Sunshine West",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2586297232,
+  "lat": -37.7763803,
+  "lon": 144.8160713,
+  "tags": {
+    "name": "Albion",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2586297397,
+  "lat": -37.7758681,
+  "lon": 144.8014637,
+  "tags": {
+    "name": "Ardeer",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2586487551,
+  "lat": -37.8300705,
+  "lon": 144.7869487,
+  "tags": {
+    "name": "Laverton North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2586494546,
+  "lat": -37.7686602,
+  "lon": 144.7713077,
+  "tags": {
+    "name": "Deer Park",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2586504789,
+  "lat": -37.7754956,
+  "lon": 144.7366326,
+  "tags": {
+    "name": "Ravenhall",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2587398666,
+  "lat": -37.7371074,
+  "lon": 144.8282988,
+  "tags": {
+    "name": "Kealba",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2587398968,
+  "lat": -37.7113545,
+  "lon": 144.8250696,
+  "tags": {
+    "name": "Keilor",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2587399297,
+  "lat": -37.7187247,
+  "lon": 144.8501721,
+  "tags": {
+    "name": "Keilor Park",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2587406538,
+  "lat": -37.7397699,
+  "lon": 144.8847881,
+  "tags": {
+    "name": "Niddrie",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2587455891,
+  "lat": -37.7596196,
+  "lon": 144.8974571,
+  "tags": {
+    "name": "Aberfeldie",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2587463799,
+  "lat": -37.7222576,
+  "lon": 144.8834942,
+  "tags": {
+    "name": "Airport West",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2587474997,
+  "lat": -37.7384762,
+  "lon": 144.9012027,
+  "tags": {
+    "name": "Essendon North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2588513600,
+  "lat": -37.8611788,
+  "lon": 144.8898569,
+  "tags": {
+    "name": "Williamstown",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2588525785,
+  "lat": -37.8641585,
+  "lon": 144.8442324,
+  "tags": {
+    "name": "Seaholme",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2588558933,
+  "lat": -37.8378229,
+  "lon": 144.8342853,
+  "tags": {
+    "name": "Altona North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2588606626,
+  "lat": -37.7133663,
+  "lon": 144.8969057,
+  "tags": {
+    "name": "Strathmore Heights",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2588607600,
+  "lat": -37.7848299,
+  "lon": 145.1238431,
+  "tags": {
+    "name": "Doncaster",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2588608012,
+  "lat": -37.7898094,
+  "lon": 145.1914915,
+  "tags": {
+    "name": "Donvale",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2588608583,
+  "lat": -37.7788744,
+  "lon": 145.1638815,
+  "tags": {
+    "name": "Doncaster East",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2588608860,
+  "lat": -37.7540588,
+  "lon": 145.1486152,
+  "tags": {
+    "name": "Templestowe",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2588608861,
+  "lat": -37.7688992,
+  "lon": 145.0871992,
+  "tags": {
+    "name": "Bulleen",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2588608889,
+  "lat": -37.7919518,
+  "lon": 145.0842372,
+  "tags": {
+    "alt_name": "North Balwyn",
+    "name": "Balwyn North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2589740407,
+  "lat": -37.7434265,
+  "lon": 144.9384767,
+  "tags": {
+    "name": "Pascoe Vale South",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2589740546,
+  "lat": -37.7250777,
+  "lon": 144.9379604,
+  "tags": {
+    "name": "Pascoe Vale",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2592175663,
+  "lat": -37.6768765,
+  "lon": 144.8939017,
+  "tags": {
+    "name": "Westmeadows",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2592178023,
+  "lat": -37.7733903,
+  "lon": 145.0617815,
+  "tags": {
+    "name": "Ivanhoe East",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2592178651,
+  "lat": -37.7690312,
+  "lon": 145.0430809,
+  "tags": {
+    "name": "Ivanhoe",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2592346439,
+  "lat": -37.6629220,
+  "lon": 145.0039550,
+  "tags": {
+    "name": "Lalor",
+    "place": "suburb",
+    "population": "23219"
+  }
+},
+{
+  "type": "node",
+  "id": 2592347328,
+  "lat": -37.6832672,
+  "lon": 145.0081104,
+  "tags": {
+    "name": "Thomastown",
+    "place": "suburb",
+    "population": "20234"
+  }
+},
+{
+  "type": "node",
+  "id": 2592347767,
+  "lat": -37.6641334,
+  "lon": 145.0642681,
+  "tags": {
+    "name": "Mill Park",
+    "place": "suburb",
+    "population": "28712",
+    "source": "2021 census"
+  }
+},
+{
+  "type": "node",
+  "id": 2592350763,
+  "lat": -37.6982468,
+  "lon": 145.0596757,
+  "tags": {
+    "name": "Bundoora",
+    "place": "suburb",
+    "population": "28068"
+  }
+},
+{
+  "type": "node",
+  "id": 2592351056,
+  "lat": -37.7251655,
+  "lon": 145.0935218,
+  "tags": {
+    "name": "Yallambie",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2592353072,
+  "lat": -37.7388437,
+  "lon": 145.1162240,
+  "tags": {
+    "name": "Lower Plenty",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2592353793,
+  "lat": -37.8088622,
+  "lon": 144.8794356,
+  "tags": {
+    "name": "Kingsville",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2592353794,
+  "lat": -37.8067725,
+  "lon": 144.8915967,
+  "tags": {
+    "name": "Seddon",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2592353803,
+  "lat": -37.8180051,
+  "lon": 144.8819389,
+  "tags": {
+    "name": "Yarraville",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2592354305,
+  "lat": -37.8296363,
+  "lon": 144.8879010,
+  "tags": {
+    "name": "Spotswood",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2592355035,
+  "lat": -37.8435966,
+  "lon": 144.8804797,
+  "tags": {
+    "name": "Newport",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2592602333,
+  "lat": -37.7066557,
+  "lon": 145.1890670,
+  "tags": {
+    "name": "Research",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2593697105,
+  "lat": -37.6674499,
+  "lon": 145.1123773,
+  "tags": {
+    "name": "Plenty",
+    "place": "suburb",
+    "population": "2575"
+  }
+},
+{
+  "type": "node",
+  "id": 2593697250,
+  "lat": -37.6669718,
+  "lon": 145.1587044,
+  "tags": {
+    "name": "Diamond Creek",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2593707735,
+  "lat": -37.8996435,
+  "lon": 145.1056700,
+  "tags": {
+    "name": "Oakleigh East",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2593707736,
+  "lat": -37.9076585,
+  "lon": 145.1084736,
+  "tags": {
+    "name": "Huntingdale",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2593707737,
+  "lat": -37.8995028,
+  "lon": 145.0811583,
+  "tags": {
+    "name": "Hughesdale",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2593707738,
+  "lat": -37.9055820,
+  "lon": 145.1455616,
+  "tags": {
+    "name": "Notting Hill",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2593707969,
+  "lat": -37.9007001,
+  "lon": 145.0956739,
+  "tags": {
+    "name": "Oakleigh",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2593709371,
+  "lat": -37.8968653,
+  "lon": 145.0703808,
+  "tags": {
+    "name": "Murrumbeena",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2593711289,
+  "lat": -37.8933729,
+  "lon": 145.0559135,
+  "tags": {
+    "name": "Carnegie",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2594688910,
+  "lat": -37.8768350,
+  "lon": 145.0658739,
+  "tags": {
+    "name": "Malvern East",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2594692197,
+  "lat": -37.8822799,
+  "lon": 145.1001365,
+  "tags": {
+    "name": "Chadstone",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2594692629,
+  "lat": -37.8673582,
+  "lon": 145.0806524,
+  "tags": {
+    "name": "Ashburton",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2594693723,
+  "lat": -37.8558140,
+  "lon": 145.0646117,
+  "tags": {
+    "name": "Glen Iris",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2594694452,
+  "lat": -37.8413940,
+  "lon": 145.0358402,
+  "tags": {
+    "name": "Kooyong",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2594694487,
+  "lat": -37.8567619,
+  "lon": 145.0206905,
+  "tags": {
+    "name": "Armadale",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2596020446,
+  "lat": -37.8666720,
+  "lon": 145.1022346,
+  "tags": {
+    "name": "Ashwood",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2596020447,
+  "lat": -37.8783923,
+  "lon": 145.1284919,
+  "tags": {
+    "name": "Mount Waverley",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2596027582,
+  "lat": -37.9220201,
+  "lon": 145.0665529,
+  "tags": {
+    "alt_name": "East Bentleigh",
+    "name": "Bentleigh East",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2596028605,
+  "lat": -37.9431093,
+  "lon": 145.1060206,
+  "tags": {
+    "name": "Clarinda",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2596028895,
+  "lat": -37.9320359,
+  "lon": 145.1245064,
+  "tags": {
+    "name": "Clayton South",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2596029212,
+  "lat": -37.9158025,
+  "lon": 145.1313859,
+  "tags": {
+    "name": "Clayton",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2596059398,
+  "lat": -37.9414646,
+  "lon": 145.0578383,
+  "tags": {
+    "name": "Moorabbin",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2596103860,
+  "lat": -37.9081962,
+  "lon": 144.9957991,
+  "tags": {
+    "name": "Brighton",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2596105026,
+  "lat": -37.8788568,
+  "lon": 144.9855487,
+  "tags": {
+    "name": "Elwood",
+    "place": "suburb",
+    "population": "15153",
+    "population:date": "10 August 2021",
+    "source:population": "Australian Bureau of Statistics (2021) 'Elwood', 2021 Census All persons QuickStats, accessed 1 May 2024"
+  }
+},
+{
+  "type": "node",
+  "id": 2596107027,
+  "lat": -37.9171728,
+  "lon": 145.0163663,
+  "tags": {
+    "alt_name": "East Brighton",
+    "name": "Brighton East",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2596107790,
+  "lat": -37.9385409,
+  "lon": 145.0306726,
+  "tags": {
+    "name": "Hampton East",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2596278837,
+  "lat": -37.9456253,
+  "lon": 145.1580111,
+  "tags": {
+    "name": "Springvale",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2597598038,
+  "lat": -37.8244246,
+  "lon": 145.0317207,
+  "tags": {
+    "name": "Hawthorn",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2597776629,
+  "lat": -37.8452062,
+  "lon": 144.9571050,
+  "tags": {
+    "name": "Albert Park",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2597852503,
+  "lat": -37.8366236,
+  "lon": 145.1233644,
+  "tags": {
+    "name": "Box Hill South",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2597853301,
+  "lat": -37.8217009,
+  "lon": 145.1522760,
+  "tags": {
+    "name": "Blackburn",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2597853424,
+  "lat": -37.8175796,
+  "lon": 145.1976295,
+  "tags": {
+    "name": "Mitcham",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2597853551,
+  "lat": -37.8379913,
+  "lon": 145.1983600,
+  "tags": {
+    "name": "Vermont",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2602195979,
+  "lat": -37.7399103,
+  "lon": 145.0932329,
+  "tags": {
+    "name": "Viewbank",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2602310264,
+  "lat": -37.6978921,
+  "lon": 145.1417807,
+  "tags": {
+    "name": "Eltham North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2602311176,
+  "lat": -37.6895135,
+  "lon": 145.1295774,
+  "tags": {
+    "name": "St Helena",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2602312351,
+  "lat": -37.7175064,
+  "lon": 145.1601523,
+  "tags": {
+    "name": "Eltham",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2602385548,
+  "lat": -37.8053801,
+  "lon": 145.1543240,
+  "tags": {
+    "alt_name": "North Blackburn",
+    "name": "Blackburn North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2602416690,
+  "lat": -37.7638749,
+  "lon": 145.1122762,
+  "tags": {
+    "name": "Templestowe Lower",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2612118977,
+  "lat": -37.8089015,
+  "lon": 144.7211390,
+  "tags": {
+    "name": "Truganina",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 2672776328,
+  "lat": -37.7418658,
+  "lon": 145.0078205,
+  "tags": {
+    "name": "Preston",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 4088009963,
+  "lat": -37.8614297,
+  "lon": 144.7445428,
+  "tags": {
+    "name": "Williams Landing",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 4683276540,
+  "lat": -37.7647877,
+  "lon": 145.0634761,
+  "tags": {
+    "name": "Eaglemont",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 4920490972,
+  "lat": -37.7290870,
+  "lon": 144.7040810,
+  "tags": {
+    "name": "Deanside",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 4920504821,
+  "lat": -37.7059863,
+  "lon": 144.7174013,
+  "tags": {
+    "name": "Fraser Rise",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 5704950554,
+  "lat": -37.7243476,
+  "lon": 144.9675198,
+  "tags": {
+    "name": "Coburg North",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 8625381904,
+  "lat": -37.8141705,
+  "lon": 144.9655616,
+  "tags": {
+    "name": "Melbourne",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 9273798933,
+  "lat": -37.8087470,
+  "lon": 144.9238207,
+  "tags": {
+    "name": "West Melbourne",
+    "name:fr": "Melbourne-Ouest",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 9274651148,
+  "lat": -37.9376710,
+  "lon": 145.0086789,
+  "tags": {
+    "name": "Hampton",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 9289463914,
+  "lat": -37.7393390,
+  "lon": 144.8591851,
+  "tags": {
+    "name": "Keilor East",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 9297581847,
+  "lat": -37.8806797,
+  "lon": 144.7578334,
+  "tags": {
+    "name": "Seabrook",
+    "place": "suburb"
+  }
+},
+{
+  "type": "node",
+  "id": 9299891375,
+  "lat": -37.7528304,
+  "lon": 144.8845846,
+  "tags": {
+    "name": "Essendon West",
+    "place": "suburb"
+  }
+}
+
+  ]
+}

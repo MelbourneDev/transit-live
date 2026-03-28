@@ -141,19 +141,17 @@ function load(filePath) {
 function findPath(fromLat, fromLng, toLat, toLng) {
   if (!_loaded) return null;
 
-  const startNode = nearestNode(fromLat, fromLng, 800);
-  const endNode   = nearestNode(toLat, toLng, 800);
+  let startNode = nearestNode(fromLat, fromLng, 800);
+  let endNode   = nearestNode(toLat, toLng, 800);
   if (!startNode || !endNode) return null;
   if (startNode === endNode) {
-    // Same nearest node — try to find a different end node further out
+    // Same nearest node — find a different end node and route to it
     const altEnd = nearestNodeExcluding(toLat, toLng, startNode, 800);
-    if (altEnd) {
+    if (!altEnd) {
       const n = nodes.get(startNode);
-      const n2 = nodes.get(altEnd);
-      return [[n.lng, n.lat], [n2.lng, n2.lat]];
+      return n ? [[n.lng, n.lat]] : null;
     }
-    const n = nodes.get(startNode);
-    return [[n.lng, n.lat]];
+    endNode = altEnd;
   }
 
   const endN = nodes.get(endNode);

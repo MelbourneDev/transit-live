@@ -11,24 +11,41 @@ const jwt        = require('jsonwebtoken');
 const gtfs       = require('./gtfs');
 const walkRouter = require('./walkrouter');
 
-// Address search — file-based streaming (no RAM overhead)
+// Address search — file loaded once as string buffer (~37MB), searched per query
+// Much lighter than parsed JSON (was 1.5GB), just a flat string in memory (~40MB)
 const ADDR_TSV = path.join(__dirname, 'addresses.tsv');
-const _addrFileExists = fs.existsSync(ADDR_TSV);
-if (_addrFileExists) console.log('✓ Address file: addresses.tsv ready (streaming search, no RAM cost)');
+let _addrLines = [];
+if (fs.existsSync(ADDR_TSV)) {
+  _addrLines = fs.readFileSync(ADDR_TSV, 'utf8').split('\n').filter(Boolean);
+  console.log(`✓ Address index: ${_addrLines.length} addresses (string buffer, ~${(process.memoryUsage().heapUsed/1024/1024).toFixed(0)}MB heap)`);
+}
 
 function searchAddresses(query, maxResults = 8) {
-  if (!_addrFileExists) return [];
+  if (!_addrLines.length) return [];
   const qParts = query.toLowerCase().split(/[\s,]+/).filter(Boolean);
   if (!qParts.length) return [];
+
+  // Binary search to jump near matching addresses
+  let lo = 0, hi = _addrLines.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (_addrLines[mid].toLowerCase() < query) lo = mid + 1; else hi = mid;
+  }
+
   const results = [];
-  const data = fs.readFileSync(ADDR_TSV, 'utf8');
-  const lines = data.split('\n');
-  for (const line of lines) {
-    if (results.length >= maxResults) break;
-    if (!line) continue;
-    const low = line.toLowerCase();
+  // Scan forward from binary search position
+  for (let i = lo; i < Math.min(lo + 3000, _addrLines.length) && results.length < maxResults; i++) {
+    const low = _addrLines[i].toLowerCase();
     if (qParts.every(p => low.includes(p))) {
-      const [display, lat, lng] = line.split('\t');
+      const [display, lat, lng] = _addrLines[i].split('\t');
+      results.push({ name: display, lat: parseFloat(lat), lng: parseFloat(lng), type: 'address' });
+    }
+  }
+  // Scan backward too
+  for (let i = lo - 1; i >= Math.max(0, lo - 3000) && results.length < maxResults; i--) {
+    const low = _addrLines[i].toLowerCase();
+    if (qParts.every(p => low.includes(p))) {
+      const [display, lat, lng] = _addrLines[i].split('\t');
       results.push({ name: display, lat: parseFloat(lat), lng: parseFloat(lng), type: 'address' });
     }
   }
@@ -624,7 +641,7 @@ app.post('/api/journey', async (req, res) => {
           if (leg.type !== 'walk') continue;
           if (leg.fromLat == null || leg.toLat == null) continue;
           const wp = walkRouter.findPath(leg.fromLat, leg.fromLng, leg.toLat, leg.toLng);
-          if (wp && wp.length > 2) leg.walkPath = wp;
+          if (wp && wp.length >= 2) leg.walkPath = wp;
         }
       }
     }
