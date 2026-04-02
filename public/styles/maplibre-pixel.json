@@ -5,8 +5,8 @@
     "description": "Pastel aesthetic for MapLibre GL + Protomaps PMTiles",
     "schema": "protomaps-v4"
   },
-  "glyphs": "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
-  "sprite": "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
+  "glyphs": "/fonts/{fontstack}/{range}.pbf",
+  "sprite": "/sprites/pixel-sprite",
   "sources": {
     "protomaps": {
       "type": "vector",
@@ -84,8 +84,8 @@
         "airfield"
       ],
       "paint": {
-        "fill-opacity": 1,
-        "fill-color": "#2d6e1e"
+        "fill-pattern": "park-trees",
+        "fill-opacity": 1
       }
     },
     {
@@ -101,8 +101,8 @@
         "playground"
       ],
       "paint": {
-        "fill-color": "#3d8a2a",
-        "fill-opacity": 0.7
+        "fill-pattern": "park-trees",
+        "fill-opacity": 0.9
       }
     },
     {
@@ -281,7 +281,7 @@
       "source": "protomaps",
       "source-layer": "water",
       "paint": {
-        "fill-color": "#2563a8"
+        "fill-pattern": "water-pixel"
       }
     },
     {
@@ -842,32 +842,6 @@
       "source": "protomaps",
       "source-layer": "buildings",
       "paint": {
-        "fill-extrusion-color": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "coalesce",
-            [
-              "get",
-              "height"
-            ],
-            [
-              "get",
-              "render_height"
-            ],
-            0
-          ],
-          0,
-          "#c8a882",
-          15,
-          "#b8956e",
-          40,
-          "#d4b898",
-          80,
-          "#e8d8b8"
-        ],
         "fill-extrusion-height": [
           "coalesce",
           [
@@ -911,14 +885,38 @@
           [
             "zoom"
           ],
-          13,
-          0,
           14,
-          0.9,
+          0,
+          15,
+          0.85,
           18,
           0.98
         ],
-        "fill-extrusion-vertical-gradient": true
+        "fill-extrusion-vertical-gradient": true,
+        "fill-extrusion-pattern": [
+          "step",
+          [
+            "coalesce",
+            [
+              "get",
+              "height"
+            ],
+            [
+              "get",
+              "render_height"
+            ],
+            0
+          ],
+          "bld-res",
+          10,
+          "bld-res-warm",
+          20,
+          "bld-com",
+          50,
+          "bld-tower",
+          80,
+          "bld-tower-dk"
+        ]
       }
     },
     {
@@ -2186,13 +2184,17 @@
       "layout": {
         "symbol-placement": "point",
         "text-font": [
-          "Noto Sans Italic"
+          "literal",
+          [
+            "Press Start 2P Regular"
+          ]
         ],
         "text-field": [
           "get",
           "addr_housenumber"
         ],
-        "text-size": 12
+        "text-size": 12,
+        "visibility": "none"
       },
       "paint": {
         "text-color": "#4a6040",
@@ -2215,7 +2217,10 @@
       "layout": {
         "symbol-placement": "line",
         "text-font": [
-          "Noto Sans Italic"
+          "literal",
+          [
+            "Press Start 2P Regular"
+          ]
         ],
         "text-field": [
           "case",
@@ -3088,7 +3093,8 @@
           ]
         ],
         "text-size": 12,
-        "text-letter-spacing": 0.2
+        "text-letter-spacing": 0.2,
+        "visibility": "none"
       },
       "paint": {
         "text-color": "#4a6040",
@@ -3114,7 +3120,14 @@
         "symbol-placement": "line",
         "icon-image": "arrow",
         "icon-rotate": 90,
-        "symbol-spacing": 100
+        "symbol-spacing": 100,
+        "visibility": "none",
+        "text-font": [
+          "literal",
+          [
+            "Press Start 2P Regular"
+          ]
+        ]
       },
       "paint": {}
     },
@@ -3138,7 +3151,10 @@
         ],
         "symbol-placement": "line",
         "text-font": [
-          "Noto Sans Regular"
+          "literal",
+          [
+            "Press Start 2P Regular"
+          ]
         ],
         "text-field": [
           "case",
@@ -4010,7 +4026,8 @@
             ]
           ]
         ],
-        "text-size": 12
+        "text-size": 12,
+        "visibility": "none"
       },
       "paint": {
         "text-color": "#4a6040",
@@ -4034,7 +4051,10 @@
       ],
       "layout": {
         "text-font": [
-          "Noto Sans Italic"
+          "literal",
+          [
+            "Press Start 2P Regular"
+          ]
         ],
         "text-field": [
           "case",
@@ -4921,7 +4941,8 @@
         ],
         "text-letter-spacing": 0.1,
         "text-max-width": 9,
-        "text-transform": "uppercase"
+        "text-transform": "uppercase",
+        "visibility": "none"
       },
       "paint": {
         "text-color": "#4a6040",
@@ -4941,7 +4962,10 @@
       ],
       "layout": {
         "text-font": [
-          "Noto Sans Italic"
+          "literal",
+          [
+            "Press Start 2P Regular"
+          ]
         ],
         "text-field": [
           "case",
@@ -5815,7 +5839,8 @@
         ],
         "text-size": 10,
         "text-letter-spacing": 0.1,
-        "text-max-width": 8
+        "text-max-width": 8,
+        "visibility": "none"
       },
       "paint": {
         "text-color": "#4a6040",
@@ -5836,7 +5861,10 @@
       ],
       "layout": {
         "text-font": [
-          "Noto Sans Italic"
+          "literal",
+          [
+            "Press Start 2P Regular"
+          ]
         ],
         "text-field": [
           "case",
@@ -6724,7 +6752,8 @@
           12
         ],
         "text-letter-spacing": 0.1,
-        "text-max-width": 9
+        "text-max-width": 9,
+        "visibility": "none"
       },
       "paint": {
         "text-color": "#4a6040",
@@ -6820,13 +6849,17 @@
           "shield_text"
         ],
         "text-font": [
-          "Noto Sans Medium"
+          "literal",
+          [
+            "Press Start 2P Regular"
+          ]
         ],
         "text-size": 8,
         "icon-size": 0.8,
         "symbol-placement": "line",
         "icon-rotation-alignment": "viewport",
-        "text-rotation-alignment": "viewport"
+        "text-rotation-alignment": "viewport",
+        "visibility": "none"
       },
       "paint": {
         "text-color": "#4a6040"
@@ -6851,7 +6884,10 @@
         ],
         "symbol-placement": "line",
         "text-font": [
-          "Noto Sans Regular"
+          "literal",
+          [
+            "Press Start 2P Regular"
+          ]
         ],
         "text-field": [
           "case",
@@ -7723,7 +7759,8 @@
             ]
           ]
         ],
-        "text-size": 12
+        "text-size": 12,
+        "visibility": "none"
       },
       "paint": {
         "text-color": "#4a6040",
@@ -7747,42 +7784,21 @@
           [
             "literal",
             [
-              "beach",
-              "forest",
-              "marina",
-              "park",
-              "peak",
-              "zoo",
-              "garden",
-              "bench",
-              "aerodrome",
-              "station",
-              "bus_stop",
-              "ferry_terminal",
-              "stadium",
-              "university",
-              "library",
-              "school",
-              "animal",
-              "toilets",
-              "drinking_water",
-              "post_office",
-              "building",
-              "townhall",
-              "restaurant",
-              "fast_food",
-              "cafe",
-              "bar",
-              "supermarket",
-              "convenience",
-              "books",
-              "beauty",
-              "electronics",
-              "clothes",
               "attraction",
               "museum",
               "theatre",
-              "artwork"
+              "artwork",
+              "stadium",
+              "library",
+              "townhall",
+              "station",
+              "university",
+              "zoo",
+              "garden",
+              "park",
+              "marina",
+              "aerodrome",
+              "ferry_terminal"
             ]
           ]
         ],
@@ -7816,7 +7832,10 @@
           ]
         ],
         "text-font": [
-          "Noto Sans Regular"
+          "literal",
+          [
+            "Press Start 2P Regular"
+          ]
         ],
         "text-justify": "auto",
         "text-field": [
@@ -8710,7 +8729,8 @@
         "text-variable-anchor": [
           "left",
           "right"
-        ]
+        ],
+        "visibility": "visible"
       },
       "paint": {
         "text-color": "#4a6040",
@@ -9616,7 +9636,10 @@
           ]
         ],
         "text-font": [
-          "Noto Sans Regular"
+          "literal",
+          [
+            "Press Start 2P Regular"
+          ]
         ],
         "text-max-width": 7,
         "text-letter-spacing": 0.1,
@@ -10565,7 +10588,10 @@
           ]
         ],
         "text-font": [
-          "Noto Sans Regular"
+          "literal",
+          [
+            "Press Start 2P Regular"
+          ]
         ],
         "text-size": [
           "interpolate",
@@ -11494,26 +11520,9 @@
           ]
         ],
         "text-font": [
-          "case",
+          "literal",
           [
-            "<=",
-            [
-              "get",
-              "min_zoom"
-            ],
-            5
-          ],
-          [
-            "literal",
-            [
-              "Noto Sans Medium"
-            ]
-          ],
-          [
-            "literal",
-            [
-              "Noto Sans Regular"
-            ]
+            "Press Start 2P Regular"
           ]
         ],
         "symbol-sort-key": [
@@ -11785,7 +11794,10 @@
           {}
         ],
         "text-font": [
-          "Noto Sans Medium"
+          "literal",
+          [
+            "Press Start 2P Regular"
+          ]
         ],
         "text-size": [
           "interpolate",

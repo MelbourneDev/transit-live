@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Pixel Sprite Preview</title>
+<style>
+body { background: #1a1209; color: #f0e8d0; font-family: monospace; padding: 40px; }
+h1 { color: #fbbf24; font-size: 18px; }
+h2 { color: #34d399; font-size: 14px; margin-top: 30px; }
+.sprite-row { display: flex; gap: 40px; flex-wrap: wrap; margin: 20px 0; }
+.sprite-box { text-align: center; }
+.sprite-box canvas { image-rendering: pixelated; border: 1px solid #2a2010; }
+.sprite-box p { font-size: 11px; margin-top: 8px; color: #888; }
+</style>
+</head>
+<body>
+<h1>Transit-Live Pixel Art Sprites</h1>
+
+<h2>Vehicles</h2>
+<div class="sprite-row" id="vehicles"></div>
+
+<h2>Vehicles (Line Colours)</h2>
+<div class="sprite-row" id="lines"></div>
+
+<h2>Nature</h2>
+<div class="sprite-row" id="nature"></div>
+
+<h2>Buildings</h2>
+<div class="sprite-row" id="buildings"></div>
+
+<h2>Landmarks</h2>
+<div class="sprite-row" id="landmarks"></div>
+
+<script>
+const PAL = {
+  '0': null,
+  '1': '#1a1209',     // outline
+  '2': '#f0e8d0',     // window
+  '3': '#ffe566',     // lit window
+  'T': '#094c8d',     // train blue
+  't': '#063a6a',     // train dark
+  'S': '#9a9a9a',     // steel
+  'M': '#f5a800',     // tram yellow
+  'm': '#b87a00',     // tram dark
+  'G': '#2a7a3a',     // tram green
+  'B': '#7b5ea7',     // bus purple
+  'b': '#5a4080',     // bus dark
+  'R': '#c04040',     // roof red
+  'r': '#9a3030',     // roof dark
+  'W': '#c8a882',     // wall
+  'w': '#9a7a5a',     // wall shadow
+  'D': '#7a5a3a',     // door
+  'K': '#2d6e1e',     // tree canopy
+  'k': '#245818',     // tree dark
+  'L': '#5a9448',     // tree light
+  'P': '#8a7a6a',     // trunk
+  'C': '#d4b898',     // cream building
+  'c': '#b8956e',     // mid building
+  'H': '#e8d8b8',     // highlight
+  'F': '#e8c840',     // flinders yellow
+  'f': '#b89830',     // flinders dark
+  'g': '#2a6848',     // flinders green dome
+  'A': '#3a7fd4',     // water
+  'a': '#2563a8',     // water dark
+  'E': '#fc7f1e',     // orange line
+  'e': '#c86010',     // orange dark
+  'N': '#159943',     // green line
+  'n': '#0d7030',     // green dark
+  'X': '#8b1a4a',     // cranbourne line
+  'x': '#6a1038',     // cranbourne dark
+  'Y': '#e1261c',     // mernda line
+  'y': '#b01a14',     // mernda dark
+  'Z': '#f178af',     // sandringham
+  'z': '#c05888',     // sandringham dark
+  'd': '#5a4a3a',     // dark brown
+  'p': '#b0a090',     // platform
+  'h': '#707880',     // grey roof
+  'Q': '#d4b896',     // sandy
+};
+
+const SPRITES = {
+  train: [
+    '001111111100',
+    '0TTTTTTTTTt0',
+    '0T2T2T2T2Tt',
+    '0TTTTTTTTTt0',
+    '0ttttttttttt',
+    '0S00S00S00S0',
+  ],
+  tram: [
+    '00000SS00000',
+    '01MMMMMMMM10',
+    '0MMMMMMMMMM0',
+    '0M2M2M2M2MM0',
+    '0GGGGGGGGGG0',
+    '0mmmmmmmmmmm',
+    '0S000S000S00',
+  ],
+  bus: [
+    '0BBBBBBBB0',
+    '0B2B2B2BB0',
+    '0BBBBBBBb0',
+    '0bbbbbbbbbb',
+    '0S00S00S0S0',
+  ],
+  tree_round: [
+    '000KK000',
+    '00KKKK00',
+    '0KKLKKK0',
+    '0KKKKKK0',
+    'KKKkKKKK',
+    '0KKkKKK0',
+    '00kkkk00',
+    '000PP000',
+    '000PP000',
+    '000PP000',
+  ],
+  tree_pine: [
+    '000KK000',
+    '00KKKK00',
+    '0KKLKK00',
+    '00KKKK00',
+    '0KKKKKK0',
+    'KKKKKKKK',
+    '0KkkkKK0',
+    '000PP000',
+    '000PP000',
+    '000PP000',
+  ],
+  flower: [
+    '0L00L00L',
+    '00L00L00',
+    'L00L00L0',
+    '00L00L00',
+    '0L003L0L',
+    '00L3030L',
+    'L003L0L0',
+  ],
+  terrace: [
+    'RRRRRRRRRR',
+    'RRRRRRRRRR',
+    'rrRRRRRRrr',
+    'WWWWWWWWWW',
+    'W2WW2WWWWW',
+    'W2WW2WWWWW',
+    'WWWWWWWWWW',
+    'W2WWDDWWWW',
+    'W2WWDDWWWW',
+    'WWWWDDwwww',
+  ],
+  shop: [
+    'hhhhhhhhhh',
+    'CCCCCCCCCC',
+    'C2C2C2C2CC',
+    'CCCCCCCCCC',
+    'EEEEEEEEEE',
+    'C22222222C',
+    'C22222222C',
+    'CCDDDDCCCC',
+    'ccDDDDcccc',
+  ],
+  skyscraper_s: [
+    'hhhh',
+    'CCCC',
+    'C2CC',
+    'CCCC',
+    'C2CC',
+    'CCCC',
+    'C2cC',
+    'cccc',
+  ],
+  skyscraper_m: [
+    'hhhhhh',
+    'CCCCCC',
+    'C2C2CC',
+    'CCCCCC',
+    'C2C2cC',
+    'CCCCCC',
+    'C2C2CC',
+    'CCCCCC',
+    'C2C2cC',
+    'CCCCCC',
+    'C2C2CC',
+    'cccccc',
+  ],
+  skyscraper_l: [
+    'hhhhhhhh',
+    'CCCCCCCC',
+    'C2C2C2CC',
+    'CCCCCCCC',
+    'C2C2C2cC',
+    'CCCCCCCC',
+    'C2C2C2CC',
+    'CCCCCCCC',
+    'C2C2C2cC',
+    'CCCCCCCC',
+    'C2C2C2CC',
+    'CCCCCCCC',
+    'C2C2C2cC',
+    'CCCCCCCC',
+    'C2C2C2CC',
+    'cccccccc',
+  ],
+  flinders_st: [
+    '00000000ggggggg000000000',
+    '0000000g2222222g00000000',
+    '000000gggggggggggg000000',
+    '0000ggggggggggggggg00000',
+    '000gggggggggggggggggg000',
+    'FFFFFFFFFFFFFFFFFFFF0000',
+    'FFFFFFFFFFFFFFFFFFFF0000',
+    'FF2FF2FF2FF2FF2FF2FFFF00',
+    'FFFFFFFFFFFFFFFFFFFF0000',
+    'FF2FF2FF2FF2FF2FF2FFFF00',
+    'FFFFFFFFFFFFFFFFFFFFf000',
+    'FfDDffDDffDDffDDffDDff00',
+    'ffDDffDDffDDffDDffDDff00',
+    '1111111111111111111111110',
+  ],
+  mcg: [
+    '000pppppppp000',
+    '00pppppppppp00',
+    '0pKKKKKKKKKKp0',
+    '0pKKKKKKKKKKp0',
+    '0pKKKLLLKKKKp0',
+    '0pKKKKKKKKKKp0',
+    '00pppppppppp00',
+    '000pppppppp000',
+  ],
+  station: [
+    'dddddddddddddd',
+    'dHHHHHHHHHHHHdd',
+    'dH2H2H2H2H2HHd',
+    'dHHHHHHHHHHHHdd',
+    'dH2H2H2H2H2HHd',
+    'dHHHHDDDDHHHHdd',
+    'pppppppppppppppp',
+    'pppppppppppppppp',
+  ],
+};
+
+function drawSprite(rows, scale, palOverrides) {
+  const p = { ...PAL, ...palOverrides };
+  const h = rows.length;
+  const w = Math.max(...rows.map(r => r.length));
+  const canvas = document.createElement('canvas');
+  canvas.width = w * scale;
+  canvas.height = h * scale;
+  canvas.style.width = (w * scale) + 'px';
+  canvas.style.height = (h * scale) + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < rows[y].length; x++) {
+      const c = p[rows[y][x]];
+      if (!c) continue;
+      ctx.fillStyle = c;
+      ctx.fillRect(x * scale, y * scale, scale, scale);
+    }
+  }
+  return canvas;
+}
+
+function addSprite(containerId, name, rows, scale, palOverrides) {
+  const box = document.createElement('div');
+  box.className = 'sprite-box';
+  box.appendChild(drawSprite(rows, scale || 6, palOverrides));
+  const label = document.createElement('p');
+  label.textContent = name;
+  box.appendChild(label);
+  document.getElementById(containerId).appendChild(box);
+}
+
+// Vehicles
+addSprite('vehicles', 'Metro Train (Blue)', SPRITES.train, 6);
+addSprite('vehicles', 'Yarra Tram', SPRITES.tram, 6);
+addSprite('vehicles', 'Bus', SPRITES.bus, 6);
+
+// Line colours
+addSprite('lines', 'Frankston', SPRITES.train, 5, { T: '#159943', t: '#0d7030' });
+addSprite('lines', 'Sunbury', SPRITES.train, 5, { T: '#fc7f1e', t: '#c86010' });
+addSprite('lines', 'Cranbourne', SPRITES.train, 5, { T: '#8b1a4a', t: '#6a1038' });
+addSprite('lines', 'Mernda', SPRITES.train, 5, { T: '#e1261c', t: '#b01a14' });
+addSprite('lines', 'Sandringham', SPRITES.train, 5, { T: '#f178af', t: '#c05888' });
+
+// Nature
+addSprite('nature', 'Round Tree', SPRITES.tree_round, 6);
+addSprite('nature', 'Pine Tree', SPRITES.tree_pine, 6);
+addSprite('nature', 'Flowers', SPRITES.flower, 6);
+
+// Buildings
+addSprite('buildings', 'Terrace House', SPRITES.terrace, 6);
+addSprite('buildings', 'Shop', SPRITES.shop, 6);
+addSprite('buildings', 'Small Tower', SPRITES.skyscraper_s, 6);
+addSprite('buildings', 'Mid Tower', SPRITES.skyscraper_m, 6);
+addSprite('buildings', 'Tall Tower', SPRITES.skyscraper_l, 6);
+
+// Landmarks
+addSprite('landmarks', 'Flinders St Station', SPRITES.flinders_st, 6);
+addSprite('landmarks', 'MCG', SPRITES.mcg, 6);
+addSprite('landmarks', 'Train Station', SPRITES.station, 6);
+</script>
+</body>
+</html>
