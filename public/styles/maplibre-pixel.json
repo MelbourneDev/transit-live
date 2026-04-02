@@ -3115,7 +3115,8 @@
         "icon-image": "arrow",
         "icon-rotate": 90,
         "symbol-spacing": 100
-      }
+      },
+      "paint": {}
     },
     {
       "id": "roads_labels_minor",
