@@ -1,4 +1,16 @@
 
+/* ── POI popup ────────────────────────────────────────────────────── */
+.poi-popup .maplibregl-popup-content {
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  padding: 0;
+}
+.poi-popup .maplibregl-popup-close-button {
+  font-size: 18px;
+  padding: 4px 8px;
+  color: var(--muted);
+}
+
 /* ── Variables ─────────────────────────────────────────────────────── */
 :root {
   --bg:      #f8f9fb;

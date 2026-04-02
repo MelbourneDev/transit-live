@@ -185,7 +185,69 @@ if (savedStyle && MAP_STYLES[savedStyle] && savedStyle !== 'ghibli') {
   if (sel) sel.value = savedStyle;
 }
 
-// Track which marker IDs are currently added to the map
+// ── POI / Landmark click → info popup + Get Directions ────────────────
+function setupPoiClick() {
+  map.on('click', 'pois', onPoiClick);
+  map.on('mouseenter', 'pois', function() { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'pois', function() { map.getCanvas().style.cursor = ''; });
+}
+function onPoiClick(e) {
+  if (!e.features || !e.features.length) return;
+  const f = e.features[0];
+  const name = f.properties.name || f.properties['name:en'] || '';
+  if (!name) return;
+  const coords = f.geometry.coordinates.slice();
+  const kind = f.properties.kind || '';
+
+  const kindLabels = {
+    attraction:'Attraction', museum:'Museum', theatre:'Theatre', artwork:'Artwork',
+    stadium:'Stadium', library:'Library', townhall:'Town Hall', station:'Station',
+    university:'University', zoo:'Zoo', garden:'Garden', park:'Park',
+    marina:'Marina', aerodrome:'Airport', ferry_terminal:'Ferry Terminal',
+    restaurant:'Restaurant', cafe:'Cafe', bar:'Bar', supermarket:'Supermarket',
+    school:'School', building:'Building',
+  };
+  const kindLabel = kindLabels[kind] || kind;
+  const kindIcons = {
+    attraction:'🏛️', museum:'🖼️', theatre:'🎭', artwork:'🎨',
+    stadium:'🏟️', library:'📚', townhall:'🏢', station:'🚉',
+    university:'🎓', zoo:'🦁', garden:'🌳', park:'🌲',
+    marina:'⛵', aerodrome:'✈️', ferry_terminal:'⛴️',
+    restaurant:'🍽️', cafe:'☕', bar:'🍺', supermarket:'🛒',
+    school:'🏫', building:'🏢',
+  };
+  const icon = kindIcons[kind] || '📍';
+
+  new maplibregl.Popup({ maxWidth: '260px', className: 'poi-popup' })
+    .setLngLat(coords)
+    .setHTML(`
+      <div style="font-family:var(--font);padding:12px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="font-size:24px">${icon}</span>
+          <div>
+            <div style="font-weight:700;font-size:14px;color:var(--fg)">${name}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${kindLabel}</div>
+          </div>
+        </div>
+        <button onclick="
+          this.closest('.maplibregl-popup').remove();
+          selectAddrResult(${coords[1]}, ${coords[0]}, '${name.replace(/'/g, "\\'")}', '${name.replace(/'/g, "\\'")}');
+        " style="
+          width:100%;padding:8px 12px;margin-top:4px;
+          background:var(--blue);color:#fff;border:none;border-radius:8px;
+          font-size:13px;font-weight:600;cursor:pointer;
+          font-family:var(--font);
+        ">Get Directions</button>
+      </div>
+    `)
+    .addTo(map);
+});
+
+// Set up POI click on initial load and after style changes
+setupPoiClick();
+map.on('style.load', setupPoiClick);
+
+// Track which marker IDs
 const markersOnMap = new Set();
 
 // Returns a promise that resolves when the map is fully loaded (5s timeout)
