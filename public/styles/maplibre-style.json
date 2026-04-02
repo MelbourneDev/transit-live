@@ -10,7 +10,7 @@
   "sources": {
     "protomaps": {
       "type": "vector",
-      "url": "pmtiles://https://pub-a8948612ea5340b3ba4ee65188d2142a.r2.dev/melbourne.pmtiles",
+      "url": "pmtiles:///melbourne.pmtiles",
       "attribution": "© <a href='https://openstreetmap.org'>OpenStreetMap</a> contributors"
     }
   },

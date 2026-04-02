@@ -1,3 +1,6 @@
 node_modules/
 .env
 .DS_Store
+gtfs.zip
+melbourne_roads.json
+public/melbourne.pmtiles
