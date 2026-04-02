@@ -229,10 +229,7 @@ function onPoiClick(e) {
             <div style="font-size:11px;color:var(--muted);margin-top:2px">${kindLabel}</div>
           </div>
         </div>
-        <button onclick="
-          this.closest('.maplibregl-popup').remove();
-          selectAddrResult(${coords[1]}, ${coords[0]}, '${name.replace(/'/g, "\\'")}', '${name.replace(/'/g, "\\'")}');
-        " style="
+        <button data-lat="${coords[1]}" data-lng="${coords[0]}" data-name="${name.replace(/"/g, '&quot;')}" class="poi-directions-btn" style="
           width:100%;padding:8px 12px;margin-top:4px;
           background:var(--blue);color:#fff;border:none;border-radius:8px;
           font-size:13px;font-weight:600;cursor:pointer;
@@ -241,11 +238,23 @@ function onPoiClick(e) {
       </div>
     `)
     .addTo(map);
-});
+}
 
 // Set up POI click on initial load and after style changes
 setupPoiClick();
 map.on('style.load', setupPoiClick);
+
+// Delegated click for Get Directions buttons in POI popups
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.poi-directions-btn');
+  if (!btn) return;
+  const lat = parseFloat(btn.dataset.lat);
+  const lng = parseFloat(btn.dataset.lng);
+  const name = btn.dataset.name;
+  const popup = btn.closest('.maplibregl-popup');
+  if (popup) popup.remove();
+  selectAddrResult(lat, lng, name, name);
+});
 
 // Track which marker IDs
 const markersOnMap = new Set();
