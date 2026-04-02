@@ -69,6 +69,21 @@ function toggleGhost(){
   showToast(ghostMode ? '👻 Ghost mode on — your location is hidden' : '👤 Ghost mode off');
 }
 
+// ── Isometric view toggle ─────────────────────────────────────────────
+let isoMode = false;
+function toggleIso() {
+  isoMode = !isoMode;
+  const btn = document.getElementById('iso-btn');
+  if (isoMode) {
+    map.easeTo({ pitch: 55, bearing: map.getBearing() || -20, duration: 800 });
+    btn.classList.add('active');
+  } else {
+    map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
+    btn.classList.remove('active');
+  }
+}
+window.toggleIso = toggleIso;
+
 // ── Onboarding ─────────────────────────────────────────────────────────
 const OB_STEPS = [
   {illo:'🚆', title:"Welcome to Transit-Live!", desc:"Melbourne's cutest real-time transit tracker. See every vehicle, live."},
@@ -132,6 +147,8 @@ const map = new maplibregl.Map({
   antialias: true
 });
 map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+map.dragRotate.enable();
+map.touchPitch.enable();
 window.map = map; // expose for navigation.js module
 map.on('error', e => console.error('[MapLibre error]', e.error?.message || e));
 map.on('load', () => {
@@ -143,6 +160,30 @@ map.on('load', () => {
     'space-color': '#7ec8e3'
   });
 });
+
+// ── Map style switcher ────────────────────────────────────────────────
+const MAP_STYLES = {
+  ghibli: '/styles/maplibre-style.json',
+  pixel:  '/styles/maplibre-pixel.json',
+};
+let currentStyleId = 'ghibli';
+
+function switchMapStyle(styleId) {
+  const url = MAP_STYLES[styleId];
+  if (!url) return;
+  currentStyleId = styleId;
+  map.setStyle(url);
+  localStorage.setItem('mapStyle', styleId);
+}
+window.switchMapStyle = switchMapStyle;
+
+// Restore saved style preference
+const savedStyle = localStorage.getItem('mapStyle');
+if (savedStyle && MAP_STYLES[savedStyle] && savedStyle !== 'ghibli') {
+  switchMapStyle(savedStyle);
+  const sel = document.getElementById('map-style-select');
+  if (sel) sel.value = savedStyle;
+}
 
 // Track which marker IDs are currently added to the map
 const markersOnMap = new Set();

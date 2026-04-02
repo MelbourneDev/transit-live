@@ -18,6 +18,7 @@
   maplibregl.addProtocol('pmtiles', protocol.tile.bind(protocol));
 </script>
 <link rel="stylesheet" href="/css/style.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
 </head>
 <body>
@@ -67,6 +68,11 @@
   <div class="hdr-spacer"></div>
   <div class="mode-badge demo" id="mode-badge"><div class="mode-dot"></div><span id="mode-text">DEMO</span></div>
   <button class="hdr-btn" id="ghost-btn" title="Ghost mode" onclick="toggleGhost()">👻</button>
+  <select class="hdr-btn" id="map-style-select" title="Map style" onchange="switchMapStyle(this.value)" style="font-size:12px;padding:4px 6px;cursor:pointer;background:inherit;color:inherit;border:1px solid rgba(0,0,0,0.1);border-radius:6px;">
+    <option value="ghibli">🎨 Ghibli</option>
+    <option value="pixel">🎮 Pixel Art</option>
+  </select>
+  <button class="hdr-btn" id="iso-btn" title="Isometric view" onclick="toggleIso()" style="font-size:12px">🏙️</button>
   <div id="hdr-auth-area">
     <button class="hdr-signin" id="hdr-signin-btn" onclick="openAuth()" style="display:none">Sign in</button>
     <div class="hdr-avatar" id="hdr-avatar" title="Fly to me" onclick="flyToUser()" style="display:none">🌸</div>
